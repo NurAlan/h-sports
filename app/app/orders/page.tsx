@@ -1,52 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FAB } from "@/components/fab";
-import { Package, FileText, Wrench, CheckCircle2, Truck } from "lucide-react";
+import { Package, FileText, Wrench, CheckCircle2, Truck, ChevronRight } from "lucide-react";
 import { CreateOrderDialog } from "@/components/dialogs/create-order-dialog";
-
-// Dummy data
-const orders = [
-  {
-    id: "ORD-20260825-001",
-    customer: "Toko Baju Sejahtera",
-    qty: 50,
-    status: "in_production",
-    stage: "Jahit",
-    orderDate: "2026-08-25",
-    profit: "Rp 347,500",
-  },
-  {
-    id: "ORD-20260824-003",
-    customer: "PT Garmen Indo",
-    qty: 100,
-    status: "qc",
-    stage: "QC",
-    orderDate: "2026-08-24",
-    profit: "Rp 1,200,000",
-  },
-  {
-    id: "ORD-20260823-002",
-    customer: "CV Tekstil Makmur",
-    qty: 75,
-    status: "shipped",
-    stage: "Terkirim",
-    orderDate: "2026-08-23",
-    profit: "Rp 890,000",
-  },
-  {
-    id: "ORD-20260822-001",
-    customer: "Toko ABC",
-    qty: 30,
-    status: "draft",
-    stage: "Draft",
-    orderDate: "2026-08-22",
-    profit: "-",
-  },
-];
+import { orders } from "@/lib/mock-data";
+import { formatDate } from "@/lib/utils";
 
 // Color palette per status
 const statusConfig: Record<
@@ -54,7 +17,6 @@ const statusConfig: Record<
   {
     label: string;
     badgeClass: string;
-    cardClass: string;
     icon: typeof Package;
     iconClass: string;
     textClass: string;
@@ -63,7 +25,6 @@ const statusConfig: Record<
   draft: {
     label: "Draft",
     badgeClass: "bg-gray-300 text-gray-800",
-    cardClass: "bg-gray-200 border-gray-300",
     icon: FileText,
     iconClass: "bg-gray-400 text-white",
     textClass: "text-gray-700",
@@ -71,7 +32,6 @@ const statusConfig: Record<
   in_production: {
     label: "Produksi",
     badgeClass: "bg-blue-200 text-blue-800",
-    cardClass: "bg-gray-200 border-gray-300",
     icon: Wrench,
     iconClass: "bg-blue-500 text-white",
     textClass: "text-blue-700",
@@ -79,7 +39,6 @@ const statusConfig: Record<
   qc: {
     label: "QC",
     badgeClass: "bg-amber-200 text-amber-800",
-    cardClass: "bg-gray-200 border-gray-300",
     icon: CheckCircle2,
     iconClass: "bg-amber-500 text-white",
     textClass: "text-amber-700",
@@ -87,7 +46,6 @@ const statusConfig: Record<
   shipped: {
     label: "Terkirim",
     badgeClass: "bg-green-200 text-green-800",
-    cardClass: "bg-gray-200 border-gray-300",
     icon: Truck,
     iconClass: "bg-green-500 text-white",
     textClass: "text-green-700",
@@ -110,66 +68,66 @@ export default function OrdersPage() {
           const StatusIcon = config.icon;
 
           return (
-            <Card
-              key={order.id}
-              className={`border card-shadow-lg ${config.cardClass}`}
-            >
-              <CardContent className="pt-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <p className="text-sm font-bold text-foreground">
-                        {order.id}
+            <Link key={order.id} href={`/orders/${order.id}`}>
+              <Card className="border card-shadow-lg bg-gray-200 border-gray-300 cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                <CardContent className="pt-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="text-sm font-bold text-foreground">
+                          {order.orderNumber}
+                        </p>
+                        <Badge
+                          variant="secondary"
+                          className={config.badgeClass}
+                        >
+                          {config.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {order.customerName}
                       </p>
-                      <Badge
-                        variant="secondary"
-                        className={config.badgeClass}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          {order.qtyItems} pcs
+                        </span>
+                        <span>{formatDate(order.orderDate)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 flex-shrink-0">
+                      <div
+                        className={`${config.iconClass} p-2.5 rounded-xl shadow-md`}
                       >
-                        {config.label}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {order.customer}
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Package className="h-3 w-3" />
-                        {order.qty} pcs
-                      </span>
-                      <span>
-                        {new Date(order.orderDate).toLocaleDateString("id-ID")}
-                      </span>
+                        <StatusIcon className="h-5 w-5" />
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground mt-1" />
                     </div>
                   </div>
-                  <div
-                    className={`${config.iconClass} p-2.5 rounded-xl shadow-md flex-shrink-0`}
-                  >
-                    <StatusIcon className="h-5 w-5" />
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-border/60">
-                  <p className="text-xs text-muted-foreground">
-                    Stage:{" "}
-                    <span className={`font-semibold ${config.textClass}`}>
-                      {order.stage}
-                    </span>
-                  </p>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Profit</p>
-                    <p
-                      className={`text-sm font-bold ${
-                        order.profit === "-"
-                          ? "text-muted-foreground"
-                          : "text-green-600"
-                      }`}
-                    >
-                      {order.profit}
+                  <div className="flex items-center justify-between pt-3 border-t border-border/60">
+                    <p className="text-xs text-muted-foreground">
+                      Stage:{" "}
+                      <span className={`font-semibold ${config.textClass}`}>
+                        {order.stage}
+                      </span>
                     </p>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Profit</p>
+                      <p
+                        className={`text-sm font-bold ${
+                          order.profit === "-"
+                            ? "text-muted-foreground"
+                            : "text-green-600"
+                        }`}
+                      >
+                        {order.profit}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

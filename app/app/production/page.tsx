@@ -1,39 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Clock } from "lucide-react";
+import { CheckCircle2, Circle, Clock, ArrowRight } from "lucide-react";
 import { UpdateTimelineDialog } from "@/components/dialogs/update-timeline-dialog";
-
-// Dummy data
-const activeOrders = [
-  {
-    id: "1",
-    orderNumber: "ORD-20260825-001",
-    customer: "Toko Baju Sejahtera",
-    stages: [
-      { name: "Pengukuran", status: "completed", duration: "2h" },
-      { name: "Pemotongan", status: "completed", duration: "4h" },
-      { name: "Jahit", status: "in_progress", duration: "8h / 12h" },
-      { name: "Finishing", status: "not_started", duration: "3h" },
-      { name: "QC", status: "not_started", duration: "1h" },
-    ],
-  },
-  {
-    id: "2",
-    orderNumber: "ORD-20260824-003",
-    customer: "PT Garmen Indo",
-    stages: [
-      { name: "Pengukuran", status: "completed", duration: "3h" },
-      { name: "Pemotongan", status: "completed", duration: "5h" },
-      { name: "Jahit", status: "completed", duration: "16h" },
-      { name: "Finishing", status: "completed", duration: "4h" },
-      { name: "QC", status: "in_progress", duration: "0.5h / 2h" },
-    ],
-  },
-];
+import { orders, getTimelineForOrder } from "@/lib/mock-data";
 
 function getStageIcon(status: string) {
   switch (status) {
@@ -52,9 +26,7 @@ function getStageBadge(status: string) {
     in_progress: { label: "Sedang Dikerjakan", className: "bg-blue-100 text-blue-700" },
     not_started: { label: "Belum Dimulai", className: "bg-gray-100 text-gray-600" },
   };
-
   const config = variants[status] || { label: status, className: "" };
-
   return (
     <Badge variant="secondary" className={`text-xs ${config.className}`}>
       {config.label}
@@ -69,11 +41,16 @@ export default function ProductionPage() {
     stages: Array<{ name: string; status: string }>;
   } | null>(null);
 
-  const handleOrderClick = (order: typeof activeOrders[0]) => {
+  // Hanya order yang sedang/sudah masuk produksi
+  const activeOrders = orders.filter(
+    (o) => o.status === "in_production" || o.status === "qc"
+  );
+
+  const handleOrderClick = (id: string, orderNumber: string) => {
     setSelectedOrder({
-      id: order.id,
-      orderNumber: order.orderNumber,
-      stages: order.stages,
+      id,
+      orderNumber,
+      stages: getTimelineForOrder(id),
     });
   };
 
@@ -85,50 +62,70 @@ export default function ProductionPage() {
       />
 
       <div className="space-y-4">
-        {activeOrders.map((order) => (
-          <Card 
-            key={order.id} 
-            className="border border-blue-300 bg-blue-100 card-shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => handleOrderClick(order)}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-base">{order.orderNumber}</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {order.customer}
-                  </p>
-                </div>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                  Klik untuk Update
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {order.stages.map((stage, index) => (
-                <div
-                  key={stage.name}
-                  className="flex items-center gap-3 pb-3 border-b border-border last:border-0 last:pb-0"
-                >
-                  <div className="flex-shrink-0">
-                    {getStageIcon(stage.status)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {stage.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {stage.duration}
-                    </p>
-                  </div>
+        {activeOrders.map((order) => {
+          const timeline = getTimelineForOrder(order.id);
+          return (
+            <Card
+              key={order.id}
+              className="border border-blue-300 bg-blue-100 card-shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+              onClick={() => handleOrderClick(order.id, order.orderNumber)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
                   <div>
-                    {getStageBadge(stage.status)}
+                    <CardTitle className="text-base">{order.orderNumber}</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {order.customerName} • {order.qtyItems} pcs
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant="secondary" className="bg-blue-200 text-blue-800">
+                      Klik untuk Update
+                    </Badge>
+                    <Link
+                      href={`/orders/${order.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline"
+                    >
+                      Lihat detail <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
-              ))}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {timeline.map((stage, index) => (
+                  <div
+                    key={stage.name}
+                    className="flex items-center gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0"
+                  >
+                    <div className="flex-shrink-0">
+                      {getStageIcon(stage.status)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {index + 1}. {stage.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {stage.duration}
+                      </p>
+                    </div>
+                    <div>{getStageBadge(stage.status)}</div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {activeOrders.length === 0 && (
+          <Card className="bg-white border-gray-300 card-shadow-lg">
+            <CardContent className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Belum ada order dalam produksi
+              </p>
             </CardContent>
           </Card>
-        ))}
+        )}
       </div>
 
       {/* Update Timeline Dialog */}
