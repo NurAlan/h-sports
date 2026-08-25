@@ -14,7 +14,7 @@ import {
   getTimelineForOrder,
   getCostingForOrder,
 } from "@/lib/mock-data";
-import { formatRupiah, formatDate } from "@/lib/utils";
+import { formatRupiah, formatDate, daysUntil, daysLeftLabel } from "@/lib/utils";
 import {
   ArrowLeft,
   Package,
@@ -97,7 +97,27 @@ export default function OrderDetailPage() {
           )}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {order.qtyItems} pcs</span>
-            <span>{formatDate(order.orderDate)}</span>
+            <span>Order: {formatDate(order.orderDate)}</span>
+          </div>
+          {/* Deadline */}
+          <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-foreground">Deadline: {formatDate(order.deadline)}</span>
+            </div>
+            {(() => {
+              const days = daysUntil(order.deadline);
+              let badgeClass = "bg-gray-200 text-gray-700";
+              if (order.status === "shipped") badgeClass = "bg-green-200 text-green-800";
+              else if (days < 0) badgeClass = "bg-red-700 text-white";
+              else if (days <= 1) badgeClass = "bg-red-500 text-white";
+              else if (days < 3) badgeClass = "bg-orange-500 text-white";
+              return (
+                <Badge variant="secondary" className={badgeClass}>
+                  {order.status === "shipped" ? "Selesai" : daysLeftLabel(days)}
+                </Badge>
+              );
+            })()}
           </div>
           {order.specification && (
             <div className="mt-3 pt-3 border-t border-border/60">

@@ -19,19 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FABRIC_CATALOG } from "@/lib/master-data";
 
 interface AddFabricPurchaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-// Dummy master fabrics
-const masterFabrics = [
-  { id: "1", name: "Cotton Combed 30s" },
-  { id: "2", name: "Polyester PE" },
-  { id: "3", name: "Cotton Combed 24s" },
-  { id: "4", name: "Spandex Rayon" },
-];
 
 export function AddFabricPurchaseDialog({
   open,
@@ -86,7 +79,7 @@ export function AddFabricPurchaseDialog({
                   <SelectValue placeholder="Pilih kain" />
                 </SelectTrigger>
                 <SelectContent>
-                  {masterFabrics.map((fabric) => (
+                  {FABRIC_CATALOG.map((fabric) => (
                     <SelectItem key={fabric.id} value={fabric.id}>
                       {fabric.name}
                     </SelectItem>

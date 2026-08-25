@@ -32,13 +32,18 @@ export function CreateOrderDialog({
   const [orderDate, setOrderDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [deadline, setDeadline] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Generate order ID (dummy)
-    const orderNumber = `ORD-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-${String(Math.floor(Math.random() * 900) + 100).padStart(3, "0")}`;
-    
+
+    const orderNumber = `ORD-${new Date()
+      .toISOString()
+      .split("T")[0]
+      .replace(/-/g, "")}-${String(
+      Math.floor(Math.random() * 900) + 100
+    ).padStart(3, "0")}`;
+
     // TODO: API call to create order
     console.log({
       orderNumber,
@@ -47,6 +52,7 @@ export function CreateOrderDialog({
       quantity: parseInt(quantity),
       specification,
       orderDate,
+      deadline,
       status: "draft",
     });
 
@@ -56,14 +62,18 @@ export function CreateOrderDialog({
     setQuantity("");
     setSpecification("");
     setOrderDate(new Date().toISOString().split("T")[0]);
-    
+    setDeadline("");
+
     onOpenChange(false);
     onOrderCreated?.(orderNumber);
   };
 
+  // Minimum deadline = tanggal order (tidak boleh sebelum order date)
+  const minDeadline = orderDate || new Date().toISOString().split("T")[0];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Buat Order Baru</DialogTitle>
           <DialogDescription>
@@ -114,25 +124,50 @@ export function CreateOrderDialog({
               <Label htmlFor="spec">Spesifikasi</Label>
               <Textarea
                 id="spec"
-                placeholder="Ukuran: M, L, XL&#10;Warna: Navy Blue&#10;Design: Logo depan"
+                placeholder={"Ukuran: M, L, XL\nWarna: Navy Blue\nDesain: Logo depan"}
                 value={specification}
                 onChange={(e) => setSpecification(e.target.value)}
-                rows={4}
+                rows={3}
               />
             </div>
 
-            {/* Order Date */}
-            <div className="grid gap-2">
-              <Label htmlFor="date">Tanggal Order *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
-                required
-              />
+            {/* Tanggal Order + Deadline berdampingan */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="date">Tanggal Order *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => {
+                    setOrderDate(e.target.value);
+                    // Reset deadline jika sebelum order date baru
+                    if (deadline && deadline < e.target.value) {
+                      setDeadline("");
+                    }
+                  }}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="deadline">
+                  Deadline *{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (selesai)
+                  </span>
+                </Label>
+                <Input
+                  id="deadline"
+                  type="date"
+                  min={minDeadline}
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  required
+                />
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -141,7 +176,10 @@ export function CreateOrderDialog({
             >
               Batal
             </Button>
-            <Button type="submit" disabled={!customerName || !quantity}>
+            <Button
+              type="submit"
+              disabled={!customerName || !quantity || !deadline}
+            >
               Buat Order
             </Button>
           </DialogFooter>

@@ -2,101 +2,146 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Package, TrendingUp, Clock, AlertTriangle, ChevronRight } from "lucide-react";
-import { orders, fabrics, getFabricStock } from "@/lib/mock-data";
+import {
+  Package,
+  Clock,
+  AlertTriangle,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
+import { RevenueChart } from "@/components/dashboard/revenue-chart";
+import { StockDonut } from "@/components/dashboard/stock-donut";
+import {
+  orders,
+  fabrics,
+  monthlyStats,
+  getFabricStock,
+} from "@/lib/mock-data";
 import { formatRupiah, daysUntil, daysLeftLabel } from "@/lib/utils";
 
-// Stats compact
-const stats = [
-  {
-    title: "Stok Kain",
-    value: "127 kg",
-    subtitle: "4 jenis kain",
-    icon: Package,
-    valueClass: "text-blue-700",
-    cardClass: "bg-blue-100 border-blue-300",
-    iconClass: "bg-blue-500 text-white",
-  },
-  {
-    title: "Profit",
-    value: "Rp 8,45jt",
-    subtitle: "Margin 23.5%",
-    icon: TrendingUp,
-    valueClass: "text-green-700",
-    cardClass: "bg-green-100 border-green-300",
-    iconClass: "bg-green-500 text-white",
-  },
-  {
-    title: "Order Aktif",
-    value: "7",
-    subtitle: "2 di QC",
-    icon: Clock,
-    valueClass: "text-violet-700",
-    cardClass: "bg-violet-100 border-violet-300",
-    iconClass: "bg-violet-500 text-white",
-  },
-];
-
-// Order yang belum selesai, diurutkan deadline terdekat
-const upcomingDeadlines = orders
-  .filter((o) => o.status !== "shipped" && o.status !== "cancelled")
-  .sort((a, b) => a.deadline.localeCompare(b.deadline));
-
-// Stok menipis (di bawah reorder point)
-const lowStockFabrics = fabrics
-  .map((f) => ({ ...f, stock: getFabricStock(f.id) }))
-  .filter((f) => f.stock <= f.reorderPoint);
-
-function getDeadlineBadge(days: number) {
-  let className = "bg-blue-100 text-blue-700";
-  if (days <= 0) className = "bg-red-200 text-red-800";
-  else if (days <= 2) className = "bg-amber-100 text-amber-800";
-  return (
-    <Badge variant="secondary" className={className}>
-      {daysLeftLabel(days)}
-    </Badge>
-  );
-}
-
 export default function DashboardPage() {
+  // ===== Data perhitungan =====
+  const latest = monthlyStats[monthlyStats.length - 1]; // Agustus
+  const prev = monthlyStats[monthlyStats.length - 2]; // Juli
+  const profitChange =
+    prev.profit > 0 ? ((latest.profit - prev.profit) / prev.profit) * 100 : 0;
+  const margin = latest.revenue > 0 ? (latest.profit / latest.revenue) * 100 : 0;
+
+  const totalStock = fabrics.reduce((s, f) => s + getFabricStock(f.id), 0);
+  const activeOrders = orders.filter(
+    (o) => o.status === "in_production" || o.status === "qc"
+  );
+  const upcomingDeadlines = orders
+    .filter((o) => o.status !== "shipped" && o.status !== "cancelled")
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const lowStockFabrics = fabrics
+    .map((f) => ({ ...f, stock: getFabricStock(f.id) }))
+    .filter((f) => f.stock <= f.reorderPoint);
+
+  const isProfitUp = profitChange >= 0;
+
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
       <PageHeader
         title="Dashboard"
-        subtitle="Overview bisnis hari ini"
+        subtitle="Ringkasan bisnis bulan ini"
       />
 
-      {/* Stat cards compact — 3 kolom */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card
-              key={stat.title}
-              className={`border card-shadow-lg p-3 ${stat.cardClass}`}
-            >
-              <CardContent className="p-0">
-                <div
-                  className={`${stat.iconClass} w-7 h-7 rounded-lg flex items-center justify-center mb-2 shadow-sm`}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <p className={`text-base font-bold leading-tight truncate ${stat.valueClass}`}>
-                  {stat.value}
-                </p>
-                <p className="text-[10px] font-medium text-muted-foreground mt-0.5 truncate">
-                  {stat.title}
-                </p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  {stat.subtitle}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* 1. Hero Card — Profit */}
+      <Card className="mb-4 border-blue-300 bg-gradient-to-br from-blue-500 to-blue-700 card-shadow-lg border">
+        <CardContent className="pt-5 pb-5">
+          <p className="text-xs font-medium text-blue-100 mb-1">
+            Profit Bulan {latest.month}
+          </p>
+          <p className="text-3xl font-bold text-white mb-2">
+            {formatRupiah(latest.profit)}
+          </p>
+          <div className="flex items-center gap-3 text-[11px] text-blue-100 mb-3">
+            <span className="flex items-center gap-1">
+              {isProfitUp ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : (
+                <TrendingDown className="h-3 w-3" />
+              )}
+              {isProfitUp ? "+" : ""}
+              {profitChange.toFixed(1)}% vs {prev.month}
+            </span>
+            <span>Margin {margin.toFixed(1)}%</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/20">
+            <div>
+              <p className="text-[10px] text-blue-100">Omzet</p>
+              <p className="text-sm font-semibold text-white">
+                {formatRupiah(latest.revenue)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-blue-100">HPP</p>
+              <p className="text-sm font-semibold text-white">
+                {formatRupiah(latest.hpp)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. Grafik Omzet vs Profit */}
+      <Card className="mb-4 card-shadow-lg bg-white border-gray-300">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center justify-between">
+            <span>Omzet vs Profit</span>
+            <span className="text-[11px] font-normal text-muted-foreground">
+              6 bulan terakhir
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RevenueChart />
+        </CardContent>
+      </Card>
+
+      {/* 3. Stat compact */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <Card className="border-blue-200 bg-blue-100 card-shadow-lg border">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Package className="h-4 w-4 text-blue-700" />
+              <p className="text-xs font-medium text-blue-800">Stok Kain</p>
+            </div>
+            <p className="text-2xl font-bold text-blue-700">
+              {totalStock.toLocaleString("id-ID")}
+            </p>
+            <p className="text-[11px] text-blue-600">kg • {fabrics.length} jenis</p>
+          </CardContent>
+        </Card>
+        <Card className="border-violet-200 bg-violet-100 card-shadow-lg border">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Clock className="h-4 w-4 text-violet-700" />
+              <p className="text-xs font-medium text-violet-800">Order Aktif</p>
+            </div>
+            <p className="text-2xl font-bold text-violet-700">
+              {activeOrders.length}
+            </p>
+            <p className="text-[11px] text-violet-600">
+              {activeOrders.filter((o) => o.status === "qc").length} di QC
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Order mendekati deadline */}
+      {/* 4. Komposisi stok */}
+      <Card className="mb-4 card-shadow-lg bg-white border-gray-300">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Komposisi Stok Kain</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StockDonut />
+        </CardContent>
+      </Card>
+
+      {/* 5. Order mendekati deadline */}
       <Card className="mb-4 card-shadow-lg bg-white border-gray-300">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -112,6 +157,9 @@ export default function DashboardPage() {
           )}
           {upcomingDeadlines.map((order) => {
             const days = daysUntil(order.deadline);
+            let badgeClass = "bg-blue-100 text-blue-700";
+            if (days < 0) badgeClass = "bg-red-200 text-red-800";
+            else if (days <= 1) badgeClass = "bg-amber-100 text-amber-800";
             return (
               <Link
                 key={order.id}
@@ -127,7 +175,9 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {getDeadlineBadge(days)}
+                  <Badge variant="secondary" className={badgeClass}>
+                    {daysLeftLabel(days)}
+                  </Badge>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
               </Link>
@@ -136,7 +186,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Stok menipis — merah */}
+      {/* 6. Stok menipis */}
       {lowStockFabrics.length > 0 && (
         <Card className="border-red-300 bg-red-100 card-shadow-lg border-2">
           <CardHeader className="pb-2">

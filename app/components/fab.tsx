@@ -15,7 +15,7 @@ export function FAB({ onClick, label = "Add", className }: FABProps) {
     <Button
       onClick={onClick}
       className={cn(
-        "fixed bottom-20 right-6 z-40 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all",
+        "fixed bottom-24 right-6 z-[100] h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all",
         "bg-primary text-primary-foreground",
         className
       )}

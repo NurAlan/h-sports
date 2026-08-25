@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FAB } from "@/components/fab";
-import { ChevronRight, AlertTriangle } from "lucide-react";
+import { ChevronRight, AlertTriangle, Search } from "lucide-react";
 import { AddFabricPurchaseDialog } from "@/components/dialogs/add-fabric-purchase-dialog";
 import {
   fabrics,
@@ -18,6 +18,13 @@ import { formatRupiah, formatDate } from "@/lib/utils";
 
 export default function InventoryPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredFabrics = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return fabrics;
+    return fabrics.filter((f) => f.name.toLowerCase().includes(q));
+  }, [search]);
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
@@ -26,24 +33,36 @@ export default function InventoryPage() {
         subtitle="Stok kain & pembelian"
       />
 
+      {/* Search nama bahan */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Cari nama bahan..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        />
+      </div>
+
       {/* Compact cards — grid 2 kolom */}
       <div className="grid grid-cols-2 gap-3">
-        {fabrics.map((fabric) => {
+        {filteredFabrics.map((fabric) => {
           const stock = getFabricStock(fabric.id);
           const avgPrice = getFabricAvgPrice(fabric.id);
           const lastPurchase = getFabricLastPurchase(fabric.id);
           const isLowStock = stock <= fabric.reorderPoint;
 
           return (
-            <Link key={fabric.id} href={`/inventory/${fabric.id}`}>
+            <Link key={fabric.id} href={`/inventory/${fabric.id}`} className="h-full">
               <Card
-                className={`border card-shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all ${
+                className={`h-full border card-shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all ${
                   isLowStock
-                    ? "border-red-300 bg-red-100 border-2"
+                    ? "border-red-300 bg-red-100"
                     : "border-gray-300 bg-white"
                 }`}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-4 flex flex-col flex-1">
                   {/* Nama kain */}
                   <div className="flex items-center justify-between gap-1 mb-2">
                     <p className="text-xs font-semibold text-foreground truncate">
@@ -77,7 +96,7 @@ export default function InventoryPage() {
                   </p>
 
                   {/* Footer: reorder atau lihat detail */}
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60">
+                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-border/60">
                     {isLowStock ? (
                       <Badge
                         variant="secondary"
@@ -98,6 +117,20 @@ export default function InventoryPage() {
           );
         })}
       </div>
+
+      {/* Empty state saat tidak ada hasil */}
+      {filteredFabrics.length === 0 && (
+        <Card className="bg-white border-gray-300 card-shadow-lg">
+          <CardContent className="py-10 text-center">
+            <p className="text-sm font-medium text-foreground mb-1">
+              Bahan tidak ditemukan
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Tidak ada hasil untuk "{search}"
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Floating Action Button */}
       <FAB onClick={() => setIsDialogOpen(true)} label="Tambah Pembelian Kain" />

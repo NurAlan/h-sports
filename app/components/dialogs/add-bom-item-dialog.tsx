@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fabrics, getFabricAvgPrice, getFabricStock } from "@/lib/mock-data";
+import { FABRIC_CATALOG, getFabricCatalogById } from "@/lib/master-data";
+import { getFabricAvgPrice, getFabricStock } from "@/lib/mock-data";
 import { formatRupiah } from "@/lib/utils";
 
 interface AddBOMItemDialogProps {
@@ -40,7 +41,7 @@ export function AddBOMItemDialog({
   const [wastePercentage, setWastePercentage] = useState("10");
 
   const selectedFabric = useMemo(
-    () => fabrics.find((f) => f.id === fabricId),
+    () => getFabricCatalogById(fabricId),
     [fabricId]
   );
   const avgPrice = fabricId ? getFabricAvgPrice(fabricId) : 0;
@@ -93,7 +94,7 @@ export function AddBOMItemDialog({
                   <SelectValue placeholder="Pilih kain" />
                 </SelectTrigger>
                 <SelectContent>
-                  {fabrics.map((f) => (
+                  {FABRIC_CATALOG.map((f) => (
                     <SelectItem key={f.id} value={f.id}>
                       {f.name} (stok {getFabricStock(f.id)} kg)
                     </SelectItem>
