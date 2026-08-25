@@ -6,12 +6,18 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FAB } from "@/components/fab";
-import { Package, FileText, Wrench, CheckCircle2, Truck, ChevronRight } from "lucide-react";
+import {
+  Package,
+  FileText,
+  Wrench,
+  CheckCircle2,
+  Truck,
+  ChevronRight,
+} from "lucide-react";
 import { CreateOrderDialog } from "@/components/dialogs/create-order-dialog";
 import { orders } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
 
-// Color palette per status
 const statusConfig: Record<
   string,
   {
@@ -57,20 +63,18 @@ export default function OrdersPage() {
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
-      <PageHeader
-        title="Orders"
-        subtitle="Daftar pesanan kaos"
-      />
+      <PageHeader title="Orders" subtitle="Daftar pesanan kaos" />
 
-      <div className="space-y-5">
+      <div className="flex flex-col gap-6">
         {orders.map((order) => {
           const config = statusConfig[order.status] || statusConfig.draft;
           const StatusIcon = config.icon;
 
           return (
-            <Link key={order.id} href={`/orders/${order.id}`}>
+            <Link key={order.id} href={`/orders/${order.id}`} className="block">
               <Card className="border card-shadow-lg bg-gray-200 border-gray-300 cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                <CardContent className="pt-5">
+                <CardContent className="pt-5 pb-4 px-5">
+                  {/* Top row: order number + badge + icon */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -105,6 +109,7 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
+                  {/* Bottom row: stage + profit */}
                   <div className="flex items-center justify-between pt-3 border-t border-border/60">
                     <p className="text-xs text-muted-foreground">
                       Stage:{" "}
@@ -132,10 +137,8 @@ export default function OrdersPage() {
         })}
       </div>
 
-      {/* Floating Action Button */}
       <FAB onClick={() => setIsDialogOpen(true)} label="Buat Order Baru" />
 
-      {/* Create Order Dialog */}
       <CreateOrderDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
