@@ -11,62 +11,111 @@ Client menghadapi:
 2. ❌ Tidak ada pencatatan stok kain & historical pricing
 3. ❌ Tidak ada tracking timeline produksi
 
-**Solusi:** Sistem web app yang track stok, hitung HPP (FIFO), monitor progress produksi, dan generate laporan profit.
+**Solusi:** Sistem web app yang track stok (FIFO), hitung HPP, monitor progress produksi, dan generate laporan profit.
 
 ---
 
-## 📋 Features
+## ✅ Features (Terimplementasi)
 
-### ✅ **Inventory Management**
-- Master data kain (nama, satuan kg)
-- Batch tracking pembelian (FIFO)
-- Historical pricing (harga berubah per batch)
-- Low-stock alerts
-- Waste tracking
+### 📦 Inventory Management
+- ✅ Master data kain global (24 jenis) + CRUD (tambah/edit/hapus)
+- ✅ Batch tracking pembelian (FIFO, historical pricing)
+- ✅ Riwayat harga per batch + edit batch
+- ✅ Sisa stok per batch + progress bar
+- ✅ Low-stock alerts (merah)
+- ✅ Search nama kain
 
-### ✅ **Order Management**
-- Order kaos dari customer
-- Bill of Materials (BOM) — komposisi bahan per order
-- Status tracking: Draft → Produksi → QC → Terkirim
+### 📋 Order Management
+- ✅ Buat order kaos (dengan deadline)
+- ✅ Detail order: BOM, timeline, costing
+- ✅ BOM (Bill of Materials) — komposisi bahan + waste%
+- ✅ Filter status, search, sort by deadline
+- ✅ Warna card berdasarkan deadline (oranye/merah/merah gelap/hijau)
+- ✅ Hapus order (dialog konfirmasi)
 
-### ✅ **Production Timeline**
-- 5 stages: Pengukuran → Pemotongan → Jahit → Finishing → QC
-- Estimasi durasi per stage (fleksibel per order)
-- Actual start/end timestamps
-- Progress visualization
+### ⚙️ Production Timeline
+- ✅ 5 stages: Pengukuran → Pemotongan → Jahit → Finishing → QC
+- ✅ Progress bar keseluruhan
+- ✅ Estimasi vs aktual (deteksi keterlambatan)
+- ✅ ETA + deadline coloring
+- ✅ Update status stage
 
-### ✅ **Costing & Pricing**
-- Material cost (FIFO, waste included in HPP)
-- Labor cost (upah jahit)
-- HPP = Material + Labor
-- Harga jual: Cost-based markup (% atau fixed profit)
-- Ongkir (shipping cost)
-- **Profit = Harga Jual - HPP - Ongkir**
+### 💰 Costing & Pricing
+- ✅ Material cost (FIFO, waste masuk HPP)
+- ✅ Labor cost (upah jahit)
+- ✅ HPP = Material + Labor
+- ✅ Harga jual: markup % atau fixed profit
+- ✅ Ongkir → **Profit = Harga Jual - HPP - Ongkir**
 
-### ✅ **Reports**
-- **Per Order:** Material breakdown, HPP, profit/loss
-- **Per Period:** Total omzet, profit, margin %
-- **Inventory:** Stok real-time, nilai stok
-- Monthly trends (4 bulan terakhir)
-- Top fabrics usage
+### 📊 Laporan
+- ✅ Summary cards (omzet, HPP, profit, margin) + perbandingan periode
+- ✅ Bar chart omzet vs HPP (6 bulan)
+- ✅ Tabel detail order (9 kolom, sorting)
+- ✅ Filter periode (preset + date range)
+- ✅ Export CSV (real) + PDF (mock)
+- ✅ Top customer + top fabric
+
+### 🏠 Dashboard
+- ✅ Hero profit card + trend
+- ✅ Area chart omzet vs profit (6 bulan)
+- ✅ Donut chart komposisi stok
+- ✅ Order mendekati deadline + stok menipis
+
+### 🔐 Auth
+- ✅ Halaman login (username/password + Google button)
+- ✅ Mock auth cookie + middleware proteksi
+- ✅ Logout fungsional
 
 ---
 
 ## 🛠️ Tech Stack
 
-### **Frontend + Backend (Monolith)**
+### Frontend + Backend (Monolith)
 - **Framework:** Next.js 14 (App Router, TypeScript)
-- **UI Library:** Tailwind CSS v4 + shadcn/ui
-- **Icons:** Lucide React (line icons)
+- **UI:** Tailwind CSS v4 + shadcn/ui (native components — Base UI dihapus)
+- **Charts:** Recharts (Area, Bar, Pie)
+- **Icons:** Lucide React
+- **Toast:** Custom ToastProvider (context)
 
-### **Database**
-- **Database:** PostgreSQL (via Supabase managed or self-hosted)
-- **ORM:** Prisma (type-safe, migrations)
+### Database (belum — roadmap)
+- **Database:** PostgreSQL (via Supabase managed / self-hosted)
+- **ORM:** Prisma
+- **Auth real:** NextAuth / Supabase Auth
 
-### **Design System**
-- **Style:** Bookify-inspired (clean white, vibrant blue, pastel accents)
-- **Components:** Flat cards, rounded corners (12px), subtle borders
-- **Mobile-first:** Responsive (max-width 512px)
+### Design System
+- Bookify-inspired: clean white/gray-50, vibrant blue, pastel accents
+- Card shadows, mobile-first (max 512px)
+- Tombol aman menyala (Batal), destruktif outline
+
+---
+
+## 🚀 Getting Started
+
+```bash
+cd /Users/nuralan/Personal/sanbox/hsport/app
+npm install
+npm run dev
+```
+
+**Access:** http://localhost:3000 (login dulu — username/password apa pun)
+
+---
+
+## 📱 Halaman
+
+| Route | Halaman |
+|-------|---------|
+| `/login` | Login (mock auth) |
+| `/` | Dashboard (hero, chart, donut, deadline, stok) |
+| `/orders` | Orders (search, filter, sort, warna deadline, hapus) |
+| `/orders/[id]` | Detail order (BOM, timeline, costing) |
+| `/inventory` | Inventory (grid compact, search) |
+| `/inventory/[id]` | Riwayat harga + sisa bahan + edit batch |
+| `/production` | Timeline produksi (progress, ETA, estimasi vs aktual) |
+| `/reports` | Laporan (periode, tabel, chart, export) |
+| `/profile` | Menu: Pengaturan, Master Fabric, Laporan, Logout |
+| `/profile/settings` | Pengaturan profil |
+| `/profile/fabrics` | CRUD master fabric |
 
 ---
 
@@ -74,240 +123,83 @@ Client menghadapi:
 
 ```
 /hsport
-├── /DOCS                              # Documentation
-│   ├── 01-BUSINESS-REQUIREMENTS.md    # BRD (problem, workflow, entities)
-│   ├── 02-DESIGN-DECISIONS.md         # FIFO, waste, tech stack
-│   ├── 03-DATABASE-SCHEMA.md          # ERD, SQL schema, sample queries
-│   └── 04-UI-IMPLEMENTATION.md        # Design system, pages, components
-│
-└── /app                               # Next.js application
-    ├── /app                           # Pages (App Router)
-    │   ├── layout.tsx                 # Root layout + Bottom Nav
-    │   ├── page.tsx                   # Dashboard
-    │   ├── /orders                    # Orders list
-    │   ├── /inventory                 # Stok kain
-    │   ├── /production                # Timeline produksi
-    │   └── /reports                   # Laporan profit
-    ├── /components
-    │   ├── bottom-nav.tsx             # Fixed bottom navigation
-    │   ├── page-header.tsx            # Reusable header
-    │   └── /ui                        # shadcn/ui components
-    ├── /lib
-    │   └── utils.ts                   # Helpers
-    ├── globals.css                    # Design tokens
-    └── package.json
+├── /DOCS                  # Dokumentasi (BRD, design, schema, UI, summary)
+├── README.md
+└── /app (Next.js)
+    ├── middleware.ts       # Auth middleware
+    ├── vercel.json
+    ├── app/                # Pages (12 halaman)
+    ├── components/         # UI + dialogs + toast + charts
+    ├── lib/
+    │   ├── master-data.ts  # Katalog 24 jenis kain (global)
+    │   ├── mock-data.ts    # Semua data mock (orders, batches, BOM, costing)
+    │   └── utils.ts        # Helpers
+    └── public/
 ```
-
----
-
-## 🚀 Getting Started
-
-### **Prerequisites**
-- Node.js 18+ (LTS)
-- npm 9+
-
-### **Installation**
-
-```bash
-# Clone repo (atau sudah ada di /Users/nuralan/Personal/sanbox/hsport)
-cd /Users/nuralan/Personal/sanbox/hsport/app
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-```
-
-**Access:** http://localhost:3000
-
----
-
-## 📱 Pages (UI Prototype)
-
-### 1. **Dashboard** (`/`)
-- Stats cards: Stok kain, Profit bulan ini, Order aktif
-- Recent orders (3 terbaru)
-- Low-stock alerts
-
-### 2. **Orders** (`/orders`)
-- List semua order (Draft, Produksi, QC, Terkirim)
-- Status badges, customer, qty, profit
-
-### 3. **Inventory** (`/inventory`)
-- List kain dengan stok real-time
-- Low-stock warnings (reorder point)
-- Avg price, last purchase date
-
-### 4. **Production** (`/production`)
-- Timeline per order (5 stages)
-- Status: Completed, In Progress, Not Started
-- Duration tracking
-
-### 5. **Reports** (`/reports`)
-- Gross profit (bulan ini)
-- Monthly trend (4 bulan)
-- Top fabrics usage
-
----
-
-## 🎨 Design System
-
-### **Colors**
-- **Primary:** Vibrant blue (`oklch(0.55 0.22 250)`)
-- **Success:** Mint green pastel
-- **Warning:** Peach pastel
-- **Background:** Pure white
-- **Border:** Very subtle gray
-
-### **Components**
-- **Cards:** White, rounded 12px, flat (no heavy shadow)
-- **Buttons:** Primary blue, rounded
-- **Badges:** Pastel backgrounds (status indicators)
-- **Icons:** Line style (Lucide React)
-
-### **Bottom Navigation**
-- Fixed bottom (z-50)
-- 5 menu: Home, Orders, Inventory, Production, Reports
-- Active state: primary blue + bold icon
 
 ---
 
 ## 🗄️ Database Schema (Planned)
 
-### **Entities**
-1. `fabrics` — Master kain
-2. `fabric_batches` — Batch pembelian (FIFO tracking)
-3. `orders` — Order kaos
-4. `bom` — Bill of Materials
-5. `bom_items` — Detail bahan per order
-6. `batch_usage` — Audit trail (batch mana yang dipakai)
-7. `production_timelines` — Timeline produksi
-8. `order_costing` — Costing & pricing
+**Entities:** `fabrics`, `fabric_batches`, `orders`, `bom`, `bom_items`, `batch_usage`, `production_timelines`, `order_costing`
 
-**Method:** FIFO (First In First Out)  
-**Waste:** Masuk ke HPP (qty_actual = qty_required × (1 + waste%))
-
-**See:** `/DOCS/03-DATABASE-SCHEMA.md` untuk detail lengkap.
+**Method:** FIFO inventory costing, waste masuk HPP  
+**Detail:** `/DOCS/03-DATABASE-SCHEMA.md`
 
 ---
 
-## 🔄 Next Steps (Implementation Roadmap)
+## 🚦 Roadmap
 
-### **Phase 1: Database Setup** (1 week)
-- [ ] Setup Supabase project (atau PostgreSQL local)
-- [ ] Translate SQL schema → Prisma schema
-- [ ] Generate Prisma Client
-- [ ] Run migrations
-- [ ] Seed dummy data untuk testing
+### Fase 1: Database & API (berikutnya)
+- [ ] Prisma setup + schema
+- [ ] Supabase / PostgreSQL connection
+- [ ] API Routes: fabrics, fabric-batches, orders, bom, production-timelines, order-costing
+- [ ] Connect UI → API (ganti mock data)
 
-### **Phase 2: API Routes** (1 week)
-- [ ] `/api/fabrics` (CRUD)
-- [ ] `/api/fabric-batches` (purchase, FIFO allocation)
-- [ ] `/api/orders` (CRUD, status updates)
-- [ ] `/api/bom` (create BOM, calculate material cost)
-- [ ] `/api/production-timelines` (update stages)
-- [ ] `/api/order-costing` (calculate HPP, profit)
+### Fase 2: UX Enhancements
+- [ ] Loading skeletons
+- [ ] Update status order (Draft → Produksi → QC → Selesai)
+- [ ] Pagination
 
-### **Phase 3: UI Integration** (1 week)
-- [ ] Connect pages → API (replace dummy data)
-- [ ] Add forms (create order, purchase fabric, etc.)
-- [ ] Add loading states (skeleton)
-- [ ] Add error handling (toast notifications)
-- [ ] Real-time stok updates
-
-### **Phase 4: Advanced Features** (2 weeks)
-- [ ] Order detail page (`/orders/[id]`)
-- [ ] BOM builder (interactive form)
-- [ ] Timeline drag & drop (optional)
-- [ ] Costing calculator (live preview)
-- [ ] Search & filters
-- [ ] Export reports (PDF/Excel)
-- [ ] Dark mode (optional)
-
-### **Phase 5: Production Ready**
-- [ ] Authentication (simple login, single user)
-- [ ] Backup & restore
-- [ ] Deploy (Vercel atau VPS)
-- [ ] User manual (Bahasa Indonesia)
-- [ ] Training client
+### Fase 3: Advanced
+- [ ] Export PDF
+- [ ] Dark mode
+- [ ] Auth real (NextAuth/Supabase)
+- [ ] Realtime updates
+- [ ] PWA offline
 
 ---
 
-## 📊 Business Rules
+## 📊 Status
 
-1. **Stok berkurang** saat BOM di-assign ke order (actual usage = required + waste)
-2. **FIFO allocation:** Material cost pakai batch paling lama dulu
-3. **Historical pricing:** Harga per order = snapshot harga saat alokasi
-4. **Profit target:** Owner bisa set markup% default atau override per order
-5. **Timeline fleksibel:** Estimasi durasi per stage bisa di-set manual
-
----
-
-## 🧪 Testing (Manual)
-
-**UI Testing:**
-1. Start dev server: `npm run dev`
-2. Open http://localhost:3000
-3. Navigate bottom nav → verify active state
-4. Check setiap page: Dashboard, Orders, Inventory, Production, Reports
-5. Verify: mobile layout, color consistency, spacing
-
-**Expected Behavior:**
-- Clean white cards dengan subtle borders
-- Bottom nav fixed, active item primary blue
-- No console errors
-- Mobile-optimized (max 512px width)
+| Aspek | Status |
+|-------|--------|
+| UI Prototype | ✅ Selesai (12 halaman, 5 dialog) |
+| Mock auth | ✅ Cookie + middleware |
+| Build | ✅ 0 error TypeScript |
+| Deploy | ✅ https://h-sports-zeta.vercel.app (auto-deploy) |
+| Database | ⏳ Belum (roadmap Fase 1) |
+| API | ⏳ Belum (roadmap Fase 1) |
 
 ---
 
-## 📝 Documentation
+## 📄 Documentation
 
-- **BRD:** `/DOCS/01-BUSINESS-REQUIREMENTS.md`
-- **Design Decisions:** `/DOCS/02-DESIGN-DECISIONS.md`
-- **Database Schema:** `/DOCS/03-DATABASE-SCHEMA.md`
-- **UI Implementation:** `/DOCS/04-UI-IMPLEMENTATION.md`
+- **BRD:** `DOCS/01-BUSINESS-REQUIREMENTS.md`
+- **Design Decisions:** `DOCS/02-DESIGN-DECISIONS.md`
+- **Database Schema:** `DOCS/03-DATABASE-SCHEMA.md`
+- **UI Implementation:** `DOCS/04-UI-IMPLEMENTATION.md`
+- **Implementation Summary:** `DOCS/05-IMPLEMENTATION-SUMMARY.md`
 
 ---
 
 ## 👤 User Persona
 
-**Owner (single user, prototype phase):**
-- Operator tunggal (gudang + produksi + akuntansi + sales)
-- Needs: tahu stok, hitung HPP, track progress, lihat profit
-- Goal: **Profit per order visible dalam < 1 menit**
+**Owner (single user):** Operator tunggal (gudang + produksi + akuntansi + sales).  
+Kebutuhan: tahu stok, hitung HPP, track progress, lihat profit.  
+Goal: **Profit per order visible dalam < 1 menit.**
 
 ---
 
-## 🛡️ Out of Scope (Phase 1)
-
-- Multi-user / role-based access
-- Customer CRM (hanya nama/kontak sederhana)
-- Supplier management (hanya catat nama supplier)
-- Payment tracking (invoice, payment status)
-- Inventory reorder automation
-- Mobile app (web responsive cukup)
-
----
-
-## 📄 License
-
-**Internal Project** — Not open source (client work)
-
----
-
-## 🤝 Contributors
-
-- **Architect & Developer:** OpenAgentic AI (via Hermes Agent)
-- **Client:** Alan (Owner H-Sport)
-- **Consultation:** Software Architecture + Accounting
-
----
-
-## 📞 Support
-
-Untuk pertanyaan atau issue, hubungi Alan di Telegram.
-
----
-
-**Status:** ✅ UI Prototype Complete | ⏳ API Implementation Pending
+**Repo:** github.com/NurAlan/h-sports  
+**Prod:** https://h-sports-zeta.vercel.app

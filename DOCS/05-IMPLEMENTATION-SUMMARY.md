@@ -1,285 +1,176 @@
-## H-Sport UI — Complete Implementation Summary
+# H-Sport — Implementation Summary
 
-**Status:** ✅ All flows implemented dengan dummy data  
-**Dev Server:** http://localhost:3000 (running)
-
----
-
-### ✅ **Yang Sudah Selesai:**
-
-#### **1. Design Improvements**
-- ✅ **Card shadows** — Subtle depth (0 1px 3px rgba)
-- ✅ **FAB (Floating Action Button)** — Fixed di atas bottom nav, thumb-friendly
-- ✅ **Responsive layout** — Mobile-first (max 512px)
-
-#### **2. Complete Pages dengan Forms**
-
-##### **Dashboard** (`/`)
-- Stats cards (stok, profit, order aktif)
-- Recent orders list
-- Low-stock alerts
-- **No FAB** (view-only page)
-
-##### **Inventory** (`/inventory`)
-- List kain dengan stok real-time
-- Low-stock warnings
-- **✅ FAB → Form:** Add Fabric Purchase
-  - Pilih jenis kain (dropdown)
-  - Supplier name (optional)
-  - Tanggal beli
-  - Qty (kg)
-  - Harga per kg
-  - → Simpan (akan tambah stok + create new batch)
-
-##### **Orders** (`/orders`)
-- List order dengan status badges
-- Customer, qty, profit per order
-- **✅ FAB → Form:** Create Order
-  - Nama customer
-  - Kontak (telp/email)
-  - Jumlah kaos (pcs)
-  - Spesifikasi (textarea)
-  - Tanggal order
-  - → Buat Order (status: draft)
-
-##### **Production** (`/production`)
-- Timeline 5 stages per order
-- Status icons: ✅ Completed, 🕐 In Progress, ⭕ Not Started
-- **✅ Click card → Form:** Update Timeline
-  - Select status per stage:
-    - Pengukuran
-    - Pemotongan
-    - Jahit
-    - Finishing
-    - QC
-  - Status: Belum Dimulai / Sedang Dikerjakan / Selesai
-  - → Update Timeline (set actual_start/actual_end)
-
-##### **Reports** (`/reports`)
-- Gross profit card (gradient, dengan trend)
-- Monthly trend (4 bulan)
-- Top fabrics usage
-- **No FAB** (view-only page)
+**Status:** ✅ UI Prototype Complete — 12 halaman, 5 dialog, mock auth, toast  
+**Dev Server:** http://localhost:3000  
+**Production:** https://h-sports-zeta.vercel.app  
+**Tech Stack:** Next.js 14 + TypeScript + Tailwind CSS v4 + shadcn/ui + Recharts
 
 ---
 
-### 📋 **Forms yang Sudah Dibuat:**
+## 📱 Halaman (12 halaman)
 
-#### **1. Add Fabric Purchase Dialog**
-**Path:** `/components/dialogs/add-fabric-purchase-dialog.tsx`
-
-**Fields:**
-- Jenis Kain (Select, required) — dropdown dari master fabrics
-- Nama Supplier (Input, optional)
-- Tanggal Beli (Date, required)
-- Jumlah kg (Number, required, step 0.1)
-- Harga per kg (Number, required, step 100)
-
-**Action:**
-```ts
-// TODO: API call
-POST /api/fabric-batches
-{
-  fabricId: string,
-  supplierName: string | null,
-  purchaseDate: Date,
-  quantity: number,
-  pricePerKg: number
-}
-```
-
-**Effect:**
-- Create new batch di `fabric_batches`
-- Increment `qty_remaining` untuk fabric tersebut
+| Halaman | Route | Status | Fitur Utama |
+|---------|-------|--------|-------------|
+| **Login** | `/login` | ✅ | Logo, username/password, Google sign-in, mock auth cookie |
+| **Dashboard** | `/` | ✅ | Hero profit card, area chart omzet vs profit, donut stok, stat compact, deadline list, stok menipis merah |
+| **Orders** | `/orders` | ✅ | List compact, warna deadline (oranye/merah/merah gelap/hijau selesai), filter status, search nama, sort deadline, hapus order |
+| **Order Detail** | `/orders/[id]` | ✅ | Info order + deadline, BOM (komposisi bahan + tambah), timeline produksi (update stage), costing calculator (HPP, harga jual, profit) |
+| **Inventory** | `/inventory` | ✅ | Grid 2 kolom compact, search nama, low-stock merah, FAB tambah pembelian |
+| **Inventory Detail** | `/inventory/[id]` | ✅ | Riwayat harga per batch, sisa bahan per batch + progress bar, edit batch |
+| **Production** | `/production` | ✅ | Progress bar, warna deadline, estimasi vs aktual, ETA, BOM ringkas, link detail, update timeline dialog |
+| **Reports** | `/reports` | ✅ | Preset periode (bulan ini/lalu/3 bulan), date range, summary cards + perbandingan vs periode lalu, bar chart omzet vs HPP, tabel detail + sorting (9 kolom), export CSV real, top ranking customer & kain |
+| **Profile** | `/profile` | ✅ | 3 menu: Pengaturan Profil, Master Fabric, Laporan + tombol Logout fungsional |
+| **Profile Settings** | `/profile/settings` | ✅ | Form: nama pemilik, nama usaha, email, telepon |
+| **Master Fabric** | `/profile/fabrics` | ✅ | CRUD jenis kain (24 jenis), search, edit, hapus dengan aturan bisnis (kain ber-riwayat tidak bisa dihapus), dialog konfirmasi |
+| **Reports** | `/reports` | ✅ | (akses dari Profile → Laporan atau bottom nav dulu — sekarang via Profile) |
 
 ---
 
-#### **2. Create Order Dialog**
-**Path:** `/components/dialogs/create-order-dialog.tsx`
+## 🧩 Komponen
 
-**Fields:**
-- Nama Customer (Input, required)
-- Kontak (Input, optional) — telp atau email
-- Jumlah Kaos (Number, required, min 1)
-- Spesifikasi (Textarea, optional, 4 rows) — ukuran, warna, design
-- Tanggal Order (Date, required)
+### Dialogs (5)
+| Dialog | File | Fields |
+|--------|------|--------|
+| Create Order | `create-order-dialog.tsx` | Customer, kontak, qty, spesifikasi, tanggal order, deadline |
+| Add Fabric Purchase | `add-fabric-purchase-dialog.tsx` | Jenis kain (24 dari katalog), supplier, tanggal, qty kg, harga/kg |
+| Add BOM Item | `add-bom-item-dialog.tsx` | Jenis kain (24), qty bersih, waste %, live preview biaya + cek stok |
+| Update Timeline | `update-timeline-dialog.tsx` | 5 stages: status per stage (Belum/Sedang/Selesai) |
+| Costing Calculator | `costing-calculator-dialog.tsx` | Material cost (readonly BOM), upah jahit, markup/fixed profit, ongkir, live HPP + profit + margin |
 
-**Action:**
-```ts
-// TODO: API call
-POST /api/orders
-{
-  orderNumber: string, // auto-generated: ORD-20260825-001
-  customerName: string,
-  customerContact: string | null,
-  qtyItems: number,
-  specification: string | null,
-  orderDate: Date,
-  status: 'draft'
-}
-```
+### Reusable Components
+- ✅ `bottom-nav.tsx` — 5 menu (Home, Orders, Inventory, Production, Profile) + prefix match
+- ✅ `bottom-nav-wrapper.tsx` — sembunyikan nav di `/login`
+- ✅ `fab.tsx` — Floating Action Button (z-[100], bottom-24)
+- ✅ `page-header.tsx` — Title + subtitle + action
+- ✅ `toast-provider.tsx` — Toast system (4 varian, auto-dismiss 3s, stack 3)
+- ✅ `dashboard/revenue-chart.tsx` — Area chart (recharts)
+- ✅ `dashboard/stock-donut.tsx` — Donut chart komposisi stok
+- ✅ `reports/period-filter.tsx` — Preset periode + date range filter
+- ✅ `reports/comparison-bar-chart.tsx` — Bar chart omzet vs HPP
 
-**Effect:**
-- Create new order di `orders` table
-- Status: `draft`
-- Belum ada BOM (next step: BOM builder)
+### UI Components (native — Base UI dihapus)
+- Button, Card, Badge, Input, Label, Textarea, Select, Dialog, Separator, Avatar
 
 ---
 
-#### **3. Update Timeline Dialog**
-**Path:** `/components/dialogs/update-timeline-dialog.tsx`
+## 🔐 Auth & Middleware
 
-**Fields:**
-- Per stage (5 stages), select status:
-  - **Belum Dimulai** → `not_started`
-  - **Sedang Dikerjakan** → `in_progress`
-  - **Selesai** → `completed`
-
-**Stages:**
-1. Pengukuran
-2. Pemotongan
-3. Jahit
-4. Finishing
-5. QC
-
-**Action:**
-```ts
-// TODO: API call
-PATCH /api/production-timelines/:orderId
-{
-  stages: [
-    { stage_name: 'pengukuran', status: 'completed' },
-    { stage_name: 'pemotongan', status: 'in_progress' },
-    // ...
-  ]
-}
-```
-
-**Effect:**
-- Update `production_timelines` table
-- If status changes to `in_progress` → set `actual_start = NOW()`
-- If status changes to `completed` → set `actual_end = NOW()`
+- **Mock auth** via cookie (`hsport-auth=1`)
+- **Middleware** (`middleware.ts`) — proteksi semua halaman kecuali `/login`
+- Login sukses → set cookie (24 jam) → redirect ke halaman tujuan (`?next=`)
+- Logout → hapus cookie → redirect `/login`
+- Siap diganti NextAuth/Supabase
 
 ---
 
-### 🔧 **Components yang Sudah Dibuat:**
+## 🗄️ Data & State
 
-#### **Reusable UI Components:**
-- ✅ `<FAB>` — Floating Action Button (fixed bottom-right, above nav)
-- ✅ `<PageHeader>` — Title + subtitle + optional action button
-- ✅ `<BottomNav>` — Fixed navigation (5 menu)
-- ✅ `<Card>` dengan shadow (via CSS class `card-shadow`)
-- ✅ Dialog forms (3 dialogs untuk 3 flows)
+### Global Master Data
+- `lib/master-data.ts` — `FABRIC_CATALOG` (24 jenis kain, id stabil, siap schema API)
+- `lib/mock-data.ts` — semua data mock: 7 orders, 4 fabrics, 8 batches, 5 stages per order, 6 months stats, 7 costings, 4 BOM items
+- `lib/utils.ts` — helpers: `cn`, `formatRupiah`, `formatDate`, `daysUntil`, `daysLeftLabel`, `shiftMonth`
 
-#### **shadcn/ui Components Used:**
-- Button, Card, Badge, Input, Label, Textarea
-- Select (dropdown dengan search)
-- Dialog (modal forms)
+### State Management
+- Semua state lokal (useState, useMemo) — belum ada global store
+- Hapus/edit data: state lokal (mock), siap ganti ke API call
 
 ---
 
-### 🎨 **Design System Applied:**
+## 🎨 Design System
 
-#### **Colors:**
-- **Primary:** Vibrant blue (`oklch(0.55 0.22 250)`)
-- **Success:** Mint green pastel
-- **Warning:** Peach pastel
-- **Cards:** White dengan subtle shadow
+| Aspek | Value |
+|-------|-------|
+| **Primary** | Vibrant blue (`oklch(0.55 0.22 250)`) |
+| **Background** | `gray-50` (halaman), white/kartu berwarna pastel |
+| **Shadow** | `card-shadow`, `card-shadow-lg` (CSS layer) |
+| **Border** | `gray-300` untuk card normal, varian warna per status |
+| **Font** | Inter (via next/font) |
+| **Icons** | Lucide React (line icons) |
+| **Charts** | Recharts (AreaChart, BarChart, PieChart) |
 
-#### **Shadow:**
-```css
-.card-shadow {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-}
-.card-shadow-lg {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-}
-```
-
-#### **FAB Position:**
-```css
-position: fixed;
-bottom: 5rem;  /* 80px — above bottom nav (64px) */
-right: 1.5rem; /* 24px from right */
-z-index: 40;   /* below bottom nav (z-50) */
-```
+### Warna Semantik
+| Status | Background | Border | Text |
+|--------|-----------|--------|------|
+| Aman / default | `bg-white` / `bg-gray-200` | `gray-300` | dark |
+| Stok / status biru | `bg-blue-100` | `blue-300` | `blue-700` |
+| Profit / selesai | `bg-green-100` | `green-300` | `green-700` |
+| Warning / deadline < 3 | `bg-orange-100` | `orange-300` | `orange-700` |
+| Urgent / deadline 1 hari | `bg-red-100` | `red-300` | `red-700` |
+| Danger / lewat deadline | `bg-red-300` | `red-500` | `text-white` (badge) |
+| Low stock | `bg-red-100` | `red-300` | `red-600` |
 
 ---
 
-### 🚦 **Next Steps (API Integration):**
+## 📋 Fitur Bisnis Terimplementasi
 
-#### **Phase 1: Prisma Setup** (1-2 hari)
-```bash
-cd /Users/nuralan/Personal/sanbox/hsport/app
-npm install prisma @prisma/client
+### Manajemen Stok
+- ✅ Daftar jenis kain global (24) + CRUD
+- ✅ Pembelian kain (batch) — tambah, edit
+- ✅ Riwayat harga per batch (FIFO)
+- ✅ Sisa stok per batch + progress bar
+- ✅ Low-stock alerts (merah, reorder point)
+- ✅ Search nama kain
 
-# Init Prisma
-npx prisma init
+### Manajemen Order
+- ✅ Buat order (dengan deadline)
+- ✅ Detail order: BOM (komposisi bahan), Timeline, Costing
+- ✅ BOM: tambah bahan (dengan waste%), cek stok real-time
+- ✅ Timeline: 5 stages, update status per stage
+- ✅ Costing: HPP, markup/fixed profit, ongkir, live profit
+- ✅ Filter status (Draft/Produksi/QC/Selesai)
+- ✅ Search + sort (deadline, tanggal)
+- ✅ Warna card berdasarkan deadline
+- ✅ Hapus order
 
-# Edit prisma/schema.prisma (translate dari DOCS/03-DATABASE-SCHEMA.md)
-# Connect ke Supabase atau PostgreSQL local
-```
+### Manajemen Produksi
+- ✅ Progress bar keseluruhan per order
+- ✅ Estimasi vs aktual per stage (on-track/delay)
+- ✅ ETA + deadline coloring
+- ✅ BOM ringkas per order
+- ✅ Sortir prioritas (deadline terdekat)
 
-#### **Phase 2: API Routes** (2-3 hari)
-Create Next.js API routes di `/app/api/`:
+### Laporan & Profit
+- ✅ Summary cards (omzet, HPP, profit, margin) + perbandingan vs periode lalu
+- ✅ Bar chart omzet vs HPP (6 bulan)
+- ✅ Tabel detail order (9 kolom, sorting)
+- ✅ Filter periode (preset + date range)
+- ✅ Export CSV (real download)
+- ✅ Top customers + top fabrics ranking
 
-1. **`/api/fabrics`**
-   - GET → list master fabrics
-   - POST → create new fabric
-
-2. **`/api/fabric-batches`**
-   - POST → create purchase (form: Add Fabric Purchase)
-   - GET → list batches (for historical pricing)
-
-3. **`/api/orders`**
-   - GET → list orders (page: Orders)
-   - POST → create order (form: Create Order)
-   - PATCH `/api/orders/:id` → update status
-
-4. **`/api/bom` (Bill of Materials)**
-   - POST `/api/orders/:id/bom` → create BOM with materials
-   - GET `/api/orders/:id/bom` → get BOM detail
-
-5. **`/api/production-timelines`**
-   - GET `/api/orders/:id/timeline` → get stages
-   - PATCH `/api/orders/:id/timeline` → update stages (form: Update Timeline)
-
-6. **`/api/order-costing`**
-   - POST `/api/orders/:id/costing` → calculate HPP + profit
-   - PATCH `/api/orders/:id/costing` → update pricing
-
-#### **Phase 3: Connect UI → API** (2-3 hari)
-Replace dummy data dengan real `fetch()` calls:
-
-```tsx
-// Example: Inventory page
-const { data: fabrics } = await fetch('/api/fabrics').then(r => r.json());
-
-// Example: Create Order form
-const handleSubmit = async () => {
-  const response = await fetch('/api/orders', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
-  });
-  if (response.ok) {
-    router.refresh(); // reload data
-    onOpenChange(false);
-  }
-};
-```
-
-#### **Phase 4: Advanced Features** (1-2 minggu)
-- Order detail page (`/orders/[id]`)
-- BOM builder (interactive komposisi bahan)
-- Costing calculator (live HPP + profit preview)
-- Toast notifications (success/error feedback)
-- Loading skeletons
-- Search & filters
+### Autentikasi
+- ✅ Halaman login
+- ✅ Mock auth (cookie-based)
+- ✅ Middleware proteksi
+- ✅ Logout fungsional
+- ✅ Bottom nav sembunyi di login
 
 ---
 
-### 📦 **Files Created (Summary):**
+## 🚦 Roadmap (yang belum dikerjakan)
+
+### 🔴 Fase 1: Database & API
+1. **Prisma Setup** — install Prisma, translate schema dari DOCS/03-DATABASE-SCHEMA.md
+2. **Supabase / PostgreSQL** — koneksi database
+3. **API Routes** — `/api/fabrics`, `/api/fabric-batches`, `/api/orders`, `/api/bom`, `/api/production-timelines`, `/api/order-costing`
+4. **Connect UI → API** — ganti mock data dengan fetch + loading states + error handling
+
+### 🟡 Fase 2: UX Enhancements
+5. **Toast notifications** — sudah ✅ (5 dialog)
+6. **Loading skeletons** — saat fetch data
+7. **Update status order** — tombol workflow di detail (Draft → Produksi → QC → Selesai)
+8. **Form validation** lebih baik — validasi custom, pesan error per field
+9. **Pagination** — untuk list panjang
+
+### 🔵 Fase 3: Advanced
+10. **Export PDF** — (CSV sudah ✅)
+11. **Dark mode** — opsional
+12. **Auth real** — NextAuth / Supabase auth
+13. **Offline support** — PWA
+14. **Realtime** — update stok / timeline live
+
+---
+
+## 📁 Struktur File (Final)
 
 ```
 /hsport
@@ -287,70 +178,73 @@ const handleSubmit = async () => {
 │   ├── 01-BUSINESS-REQUIREMENTS.md
 │   ├── 02-DESIGN-DECISIONS.md
 │   ├── 03-DATABASE-SCHEMA.md
-│   └── 04-UI-IMPLEMENTATION.md
+│   ├── 04-UI-IMPLEMENTATION.md
+│   └── 05-IMPLEMENTATION-SUMMARY.md
+├── .gitignore
 ├── README.md
-└── /app (Next.js)
-    ├── /app
-    │   ├── layout.tsx (BottomNav)
-    │   ├── page.tsx (Dashboard dengan card-shadow)
-    │   ├── /orders/page.tsx (Orders + FAB + CreateOrderDialog)
-    │   ├── /inventory/page.tsx (Inventory + FAB + AddFabricPurchaseDialog)
-    │   ├── /production/page.tsx (Production + UpdateTimelineDialog)
-    │   └── /reports/page.tsx (Reports dengan card-shadow)
-    ├── /components
+└── /app (Next.js 14)
+    ├── middleware.ts              # Auth middleware
+    ├── vercel.json
+    ├── next.config.ts
+    ├── package.json
+    ├── app/
+    │   ├── layout.tsx             # Root layout (ToastProvider, BottomNav)
+    │   ├── globals.css            # Tailwind + design tokens
+    │   ├── page.tsx               # Dashboard
+    │   ├── login/page.tsx         # Login page
+    │   ├── orders/page.tsx        # Orders list
+    │   ├── orders/[id]/page.tsx   # Order detail
+    │   ├── inventory/page.tsx     # Inventory grid
+    │   ├── inventory/[id]/page.tsx# Inventory detail (riwayat + edit)
+    │   ├── production/page.tsx    # Production timeline
+    │   ├── reports/page.tsx       # Laporan (filter, tabel, chart, export)
+    │   └── profile/
+    │       ├── page.tsx           # Profile menu
+    │       ├── settings/page.tsx  # Pengaturan profil
+    │       └── fabrics/page.tsx   # CRUD master fabric
+    ├── components/
     │   ├── bottom-nav.tsx
+    │   ├── bottom-nav-wrapper.tsx
+    │   ├── fab.tsx
     │   ├── page-header.tsx
-    │   ├── fab.tsx (Floating Action Button)
-    │   ├── /dialogs
+    │   ├── dashboard/
+    │   │   ├── revenue-chart.tsx
+    │   │   └── stock-donut.tsx
+    │   ├── reports/
+    │   │   ├── period-filter.tsx
+    │   │   └── comparison-bar-chart.tsx
+    │   ├── dialogs/
     │   │   ├── add-fabric-purchase-dialog.tsx
     │   │   ├── create-order-dialog.tsx
-    │   │   └── update-timeline-dialog.tsx
-    │   └── /ui (shadcn/ui base components)
-    ├── globals.css (dengan .card-shadow)
-    └── package.json
+    │   │   ├── add-bom-item-dialog.tsx
+    │   │   ├── update-timeline-dialog.tsx
+    │   │   └── costing-calculator-dialog.tsx
+    │   ├── toast/
+    │   │   └── toast-provider.tsx
+    │   └── ui/
+    │       ├── button.tsx, card.tsx, badge.tsx, input.tsx
+    │       ├── label.tsx, textarea.tsx, select.tsx
+    │       ├── dialog.tsx, separator.tsx, avatar.tsx
+    ├── lib/
+    │   ├── utils.ts
+    │   ├── master-data.ts
+    │   └── mock-data.ts
+    └── public/
 ```
 
 ---
 
-### ✅ **Testing Checklist:**
+## 📊 Statistik Build
 
-**Manual Testing (di http://localhost:3000):**
-
-1. ✅ **Dashboard** → verify card shadows visible
-2. ✅ **Inventory:**
-   - Click FAB → form opens
-   - Fill form → console log (dummy submit)
-   - Low-stock warnings visible
-3. ✅ **Orders:**
-   - Click FAB → form opens
-   - Fill form → console log (dummy submit)
-   - Status badges colorful
-4. ✅ **Production:**
-   - Click card → dialog opens
-   - Change stage status → console log (dummy submit)
-   - Timeline icons correct
-5. ✅ **Reports:** verify card shadows + gradient profit card
-6. ✅ **Bottom Nav:**
-   - Active state (primary blue)
-   - Navigation works
-   - FAB tidak overlap dengan nav
+- **Halaman:** 12 (+ _not-found)
+- **Komponen:** 24 komponen kustom
+- **Dependensi baru:** recharts, @radix-ui/react-dialog, lucide-react
+- **Base UI dihapus** — semua komponen interaktif native/Radix
+- **Build:** ✅ Compiled successfully, 0 TypeScript errors
+- **Deploy:** ✅ Vercel (auto-deploy dari GitHub)
 
 ---
 
-### 🎯 **Design Goals Achieved:**
-
-✅ **Card shadows** → depth & clarity  
-✅ **FAB positioning** → thumb-friendly (di atas nav)  
-✅ **Complete flows:**
-- ✅ Tambah stok kain (Add Fabric Purchase)
-- ✅ Input pesanan (Create Order)
-- ✅ Update timeline produksi (Update Timeline Dialog)
-
-✅ **Reusable components** → clean & maintainable  
-✅ **Design consistency** → Bookify-style  
-✅ **Mobile-optimized** → max 512px, responsive
-
----
-
-**Dev server masih running:** http://localhost:3000  
-**Buka browser sekarang untuk test semua forms!** 🚀
+**Dev:** http://localhost:3000  
+**Prod:** https://h-sports-zeta.vercel.app  
+**Repo:** github.com/NurAlan/h-sports

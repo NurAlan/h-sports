@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/toast/toast-provider";
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function CreateOrderDialog({
   onOpenChange,
   onOrderCreated,
 }: CreateOrderDialogProps) {
+  const toast = useToast();
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -66,6 +68,7 @@ export function CreateOrderDialog({
 
     onOpenChange(false);
     onOrderCreated?.(orderNumber);
+    toast.success(`Order ${orderNumber} berhasil dibuat`);
   };
 
   // Minimum deadline = tanggal order (tidak boleh sebelum order date)

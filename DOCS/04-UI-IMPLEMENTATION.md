@@ -1,413 +1,250 @@
 # H-Sport: UI Implementation Documentation
 
-**Tech Stack:** Next.js 14 + TypeScript + Tailwind CSS v4 + shadcn/ui  
-**Design System:** Bookify-style (clean white, vibrant blue, pastel accents)  
-**Status:** ✅ Prototype dengan dummy data (UI-only, belum ada API)
+**Tech Stack:** Next.js 14 (App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui + Recharts  
+**Design System:** Bookify-inspired (vibrant blue, pastel accents, card shadows)  
+**Status:** ✅ Prototype lengkap (UI-only, mock data, mock auth)
 
 ---
 
 ## Design System
 
-### Color Palette (CSS Variables)
+### Color Palette (CSS Variables — globals.css)
 
 ```css
 /* Primary */
---primary: oklch(0.55 0.22 250);        /* Vibrant blue #2563EB-ish */
+--primary: oklch(0.55 0.22 250);        /* Vibrant blue */
 --primary-foreground: oklch(1 0 0);     /* White on blue */
 
 /* Background */
 --background: oklch(1 0 0);             /* Pure white */
 --foreground: oklch(0.2 0 0);           /* Dark text */
 
-/* Card */
---card: oklch(1 0 0);                   /* White cards */
---border: oklch(0.93 0 0);              /* Very subtle gray border */
-
-/* Semantic Colors */
---success: oklch(0.85 0.12 160);        /* Mint green pastel */
---warning: oklch(0.85 0.12 40);         /* Peach/coral pastel */
+/* Semantic */
+--border: oklch(0.93 0 0);              /* Subtle gray */
+--ring: oklch(0.55 0.22 250);           /* Focus = primary */
 --destructive: oklch(0.577 0.245 27.325); /* Red */
+--radius: 0.75rem;                      /* 12px */
+```
 
-/* Border Radius */
---radius: 0.75rem;                      /* 12px rounded corners */
+### Background & Card Colors
+
+- **Halaman:** `bg-gray-50` (agar card terlihat kontras)
+- **Card normal:** `bg-white border-gray-300` + `card-shadow-lg`
+- **Card status pastel:** `bg-blue-100 / green-100 / orange-100 / red-100 / red-300` + border senada
+
+### Shadow (globals.css `@layer components`)
+
+```css
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.card-shadow-lg {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
 ```
 
 ### Typography
-
-- **Font:** Inter (via next/font/google)
-- **Heading:** 2xl (24px) bold
-- **Body:** sm (14px) medium
-- **Label:** xs (12px) text-muted-foreground
-
-### Component Style
-
-- **Cards:** White background, rounded corners (12px), subtle border, **no heavy shadow** (flat design)
-- **Buttons:** Primary blue, rounded, clean
-- **Badges:** Pastel backgrounds (blue/green/yellow) dengan text colored
-- **Icons:** Line icons (Lucide React, strokeWidth 2)
+- **Font:** Inter (via `next/font/google`, variable `--font-sans`)
+- **Heading:** 2xl bold (page), base bold (card title)
+- **Body:** sm (14px), xs (12px) untuk meta
+- **Label:** xs muted uppercase pada stat card
 
 ---
 
-## Folder Structure
+## Halaman & Fitur
 
-```
-/hsport
-├── /DOCS                   # Business requirements, schema, design decisions
-├── /app                    # Next.js application
-│   ├── /app                # Pages (App Router)
-│   │   ├── layout.tsx      # Root layout (Bottom Nav)
-│   │   ├── page.tsx        # Dashboard (Home)
-│   │   ├── /orders
-│   │   │   └── page.tsx    # Orders list
-│   │   ├── /inventory
-│   │   │   └── page.tsx    # Inventory (stok kain)
-│   │   ├── /production
-│   │   │   └── page.tsx    # Production timeline
-│   │   └── /reports
-│   │       └── page.tsx    # Reports (profit, trends)
-│   ├── /components
-│   │   ├── bottom-nav.tsx  # Fixed bottom navigation
-│   │   ├── page-header.tsx # Reusable page header
-│   │   └── /ui             # shadcn/ui base components
-│   │       ├── button.tsx
-│   │       ├── card.tsx
-│   │       ├── badge.tsx
-│   │       ├── input.tsx
-│   │       └── ...
-│   ├── /lib
-│   │   └── utils.ts        # cn() helper (classnames merge)
-│   ├── globals.css         # Tailwind + design tokens
-│   └── package.json
-```
+### 1. Login (`/login`)
+- Full-screen centered, tanpa bottom nav
+- Logo: icon kaos dalam kotak biru rounded + nama "H-Sport" + tagline
+- Form: username, password (dengan toggle 👁), tombol Sign In
+- Tombol "Sign in with Google" (icon resmi 4 warna)
+- Mock auth: set cookie `hsport-auth=1` → redirect ke halaman tujuan
+- Dibungkus `Suspense` (useSearchParams untuk `?next=`)
 
----
+### 2. Dashboard (`/`)
+- **Hero card:** profit bulan ini (gradient biru `from-blue-500 to-blue-700`), trend %, margin, omzet, HPP
+- **Area chart** omzet vs profit 6 bulan (recharts, gradient fill, tooltip custom)
+- **Stat compact 2 kolom:** stok kain total kg, order aktif
+- **Donut chart** komposisi stok per jenis kain (legend + % + total)
+- **Order mendekati deadline:** list + badge sisa hari (warna)
+- **Stok menipis:** card merah `bg-red-100 border-red-300 border-2`
 
-## Pages Implemented
+### 3. Orders (`/orders`)
+- **Search bar** paling atas (icon, tombol clear ✕)
+- **Sort select:** Deadline ↑/↓, Terbaru, Terlama
+- **Filter chips:** Semua, Draft, Produksi, QC, Selesai (dengan count)
+- **Result count** + tombol "Reset filter"
+- **Card compact** dengan warna deadline:
+  - `bg-red-300` — lewat deadline
+  - `bg-red-100` — deadline ≤ 1 hari
+  - `bg-orange-100` — deadline < 3 hari
+  - `bg-green-100` — selesai
+  - `bg-gray-200` — aman
+- **Tombol hapus** (🗑) per card → dialog konfirmasi (Batal menyala biru, Ya Hapus outline merah)
+- Klik card → detail order
 
-### 1. **Dashboard (Home)** — `/`
+### 4. Order Detail (`/orders/[id]`)
+- Back link + header order (nomor, status badge, customer, kontak, qty, tanggal, **deadline + badge sisa hari**)
+- **Komposisi Bahan (BOM):** list bahan (nama, qty, waste%, harga, cost), total material cost, tombol "Tambah" → dialog
+- **Timeline Produksi:** 5 stages dengan icon status + durasi, tombol "Update" → dialog
+- **Costing & Harga Jual:** material cost, upah jahit, HPP, markup, ongkir, harga jual, profit + margin; tombol "Hitung Ulang" → dialog
 
-**Purpose:** Overview bisnis hari ini
+### 5. Inventory (`/inventory`)
+- **Search** nama bahan
+- **Grid 2 kolom** card compact (nama, stok besar, avg price, tanggal beli terakhir, reorder badge)
+- Card `h-full` + footer `mt-auto` — tinggi konsisten antar card
+- Low stock: `bg-red-100 border-red-300`
+- FAB → dialog tambah pembelian
 
-**Sections:**
-- **Stats Cards** (3 cards):
-  - Stok Kain (127.5 kg, +12.3 kg minggu ini)
-  - Profit Bulan Ini (Rp 8,450,000, Margin 23.5%)
-  - Order Aktif (7 order, 2 di stage QC)
-  
-- **Order Terbaru** (list):
-  - Order ID, customer, qty, status badge, stage, profit
-  
-- **Stok Menipis** (alert card):
-  - Kain dengan stok < reorder point (warning background)
+### 6. Inventory Detail (`/inventory/[id]`)
+- **Header:** total stok, harga rata-rata (weighted), nilai stok, warning reorder
+- **Riwayat Harga:** per batch (tanggal, supplier, qty, harga/kg) + tombol **✏️ edit**
+- **Sisa Bahan per Batch:** sisa vs beli, progress bar, badge status (Habis/Tipis/Menipis/Aman)
+- **Edit batch dialog:** supplier, tanggal, qty beli, sisa stok, harga/kg → update state + toast
 
-**Dummy Data:**
-- 3 stats
-- 3 recent orders
-- 2 low-stock fabrics
+### 7. Production (`/production`)
+- Order aktif (in_production + qc) diurutkan deadline terdekat
+- Card: header (order, status, deadline badge), **progress bar** (warna by %), stages dengan **estimasi vs aktual** (on-track hijau / terlambat merah), footer ETA (deadline + sisa jam) + BOM ringkas
+- Klik card → dialog update timeline
 
----
+### 8. Reports (`/reports`)
+- **Period filter:** preset (Bulan Ini, Bulan Lalu, 3 Bulan, Kustom) + date range
+- **Summary cards 2×2** (omzet, HPP, profit, margin) dengan **perbandingan vs periode lalu**
+- **Bar chart** omzet vs HPP 6 bulan
+- **Tabel detail** 9 kolom (tanggal, order, customer, qty, omzet, HPP, profit, margin, status) + **sorting** klik header
+- **Export:** CSV (download real, Excel-compatible) + PDF (mock)
+- **Top ranking:** customer teratas (by profit) + kain terbanyak dipakai
 
-### 2. **Orders** — `/orders`
+### 9. Profile (`/profile`)
+- 3 menu cards: Pengaturan Profil, Master Fabric, Laporan + tombol **Logout** fungsional (hapus cookie → redirect /login)
 
-**Purpose:** Daftar pesanan kaos
+### 10. Profile Settings (`/profile/settings`)
+- Form: nama pemilik, nama usaha, email, telepon → toast sukses
 
-**Features:**
-- **Action Button:** Floating Add button (top-right, primary blue)
-- **Order Cards:**
-  - Order ID + status badge (Draft/Produksi/QC/Terkirim)
-  - Customer name
-  - Qty (pcs) + order date
-  - Profit (green text)
-  - Stage indicator
-
-**Dummy Data:**
-- 4 orders (draft, in_production, qc, shipped)
-
----
-
-### 3. **Inventory** — `/inventory`
-
-**Purpose:** Stok kain & pembelian
-
-**Features:**
-- **Action Button:** Add new fabric purchase
-- **Fabric Cards:**
-  - Fabric name + low-stock icon (warning jika <= reorder point)
-  - Avg price per kg
-  - Last purchase date
-  - Stock qty (large, bold)
-  - Reorder badge (jika low stock)
-
-**Dummy Data:**
-- 4 fabrics (Cotton 30s, Polyester, Cotton 24s, Spandex)
-- 2 low-stock items (warning background)
+### 11. Master Fabric (`/profile/fabrics`)
+- CRUD jenis kain: list 24 jenis (dari FABRIC_CATALOG), search
+- Dialog tambah/edit (nama, satuan)
+- Dialog konfirmasi hapus — **aturan bisnis:** kain yang punya riwayat pembelian/BOM tidak bisa dihapus (toast error)
+- Tombol dialog: **Batal = primary menyala**, aksi destruktif = outline
 
 ---
 
-### 4. **Production** — `/production`
+## Toast System
 
-**Purpose:** Timeline produksi order
-
-**Features:**
-- **Order Cards** dengan stage timeline:
-  - Order ID + customer
-  - 5 stages: Pengukuran → Pemotongan → Jahit → Finishing → QC
-  - Stage status icons:
-    - ✅ Completed (green)
-    - 🕐 In Progress (blue)
-    - ⭕ Not Started (gray)
-  - Duration/estimasi per stage
-  - Status badge (Selesai/Sedang Dikerjakan/Belum Dimulai)
-
-**Dummy Data:**
-- 2 active orders dengan progress berbeda
+- `components/toast/toast-provider.tsx`
+- Context + `useToast()` hook: `toast.success/error/warning/info`
+- Render: fixed top, z-[200], max 3 stack, auto-dismiss 3 detik, tombol close
+- Terpasang di: create-order, add-fabric-purchase, add-bom-item, update-timeline, costing-calculator, profile settings, delete order, delete fabric, login, logout
 
 ---
 
-### 5. **Reports** — `/reports`
+## Auth (Mock)
 
-**Purpose:** Laporan profit & trends
-
-**Sections:**
-- **Summary Cards** (2 small cards):
-  - Total Order bulan ini (12)
-  - Total Omzet (Rp 18.45jt)
-
-- **Gross Profit Card** (gradient primary):
-  - Profit (Rp 4.33jt)
-  - Margin % (23.5%)
-  - Trend (+5.4%)
-  - Breakdown: HPP vs Revenue
-
-- **Monthly Trend** (4 bulan):
-  - Bulan, profit, margin, revenue
-
-- **Top Fabrics Usage**:
-  - Fabric name, usage (kg), cost
-
-**Dummy Data:**
-- Summary: 12 orders, Rp 18.45jt revenue, Rp 4.33jt profit
-- 4 months trend
-- 3 top fabrics
+- `middleware.ts`: proteksi semua route kecuali `/login`
+  - Tanpa cookie `hsport-auth=1` → redirect `/login?next=<path>`
+  - Sudah login buka `/login` → redirect `/`
+- Login: set cookie (24 jam) → redirect balik ke `next`
+- Logout: hapus cookie → redirect `/login`
+- `bottom-nav-wrapper.tsx`: nav disembunyikan di `/login`
 
 ---
 
 ## Bottom Navigation
 
-**Fixed position** (bottom: 0, z-50)
-
-**Menu Items:**
-1. **Home** (🏠) → `/`
-2. **Orders** (📦) → `/orders`
-3. **Inventory** (📊) → `/inventory`
-4. **Production** (⚙️) → `/production`
-5. **Reports** (📈) → `/reports`
-
-**Behavior:**
-- Active state: primary blue color + bold icon
-- Inactive: muted gray
-- Line icons (Lucide React)
-- Label text below icon (xs)
-
----
-
-## Reusable Components
-
-### `<PageHeader>`
 ```tsx
-<PageHeader
-  title="Dashboard"
-  subtitle="Overview bisnis hari ini"
-  action={<Button>Add</Button>}  // optional
-/>
+const navItems = [
+  { icon: Home, label: "Home", href: "/" },
+  { icon: Package, label: "Orders", href: "/orders" },
+  { icon: Warehouse, label: "Inventory", href: "/inventory" },
+  { icon: Settings, label: "Production", href: "/production" },
+  { icon: User, label: "Profile", href: "/profile" },
+];
 ```
-
-### `<BottomNav>`
-- Auto-detect active route via `usePathname()`
-- Fixed bottom position
-- Max-width 512px (mobile-optimized)
-
-### shadcn/ui Components Used
-- `<Button>` — Primary action buttons
-- `<Card>`, `<CardHeader>`, `<CardTitle>`, `<CardContent>` — Container
-- `<Badge>` — Status indicators
-- `<Input>` — Form inputs (belum dipakai)
-- `<Avatar>` — User avatar (belum dipakai)
-- `<Separator>` — Dividers (belum dipakai)
+- Active state: exact match untuk `/`, prefix match untuk sub-halaman (`/profile/settings` mengaktifkan Profile)
+- Fixed bottom, z-50, max-w-lg centered
 
 ---
 
-## Responsive Design
+## Data & State
 
-**Mobile-First:**
-- Max-width container: `max-w-lg` (512px)
-- Bottom nav: fixed, height 64px
-- Content padding-bottom: `pb-20` (agar tidak tertutup bottom nav)
-- Cards: full-width dengan spacing 12px (`space-y-3`)
+### lib/master-data.ts
+```ts
+export const FABRIC_CATALOG: MasterFabric[] // 24 jenis kain, id slug stabil
+export function getFabricCatalogById(id)
+export function getFabricCatalogName(id)
+```
 
-**Desktop:**
-- Content centered dengan max-width
-- Bottom nav tetap centered
-- No sidebar (untuk fase 1)
+### lib/mock-data.ts
+- `fabrics` — 4 kain dengan stok (id = id katalog)
+- `fabricBatches` — 8 batch pembelian
+- `bomItems` — 4 BOM items
+- `orderTimelines` — stages per order (dengan actualHrs)
+- `orderCostings` — 7 costing (order 1-7)
+- `monthlyStats` — 6 bulan omzet/HPP/profit
+- `orders` — 7 order (dengan deadline)
+- Helpers: `getFabricStock`, `getFabricAvgPrice`, `getFabricLastPurchase`, `getOrderById`, `getBOMForOrder`, `getTimelineForOrder`, `getCostingForOrder`
+
+### lib/utils.ts
+- `cn`, `formatRupiah`, `formatDate`, `daysUntil`, `daysLeftLabel`, `shiftMonth`
 
 ---
 
-## Color Usage Examples
+## Komponen UI (semua native/Radix — Base UI dihapus)
 
-### Status Badges
-```tsx
-// Draft
-<Badge className="bg-gray-100 text-gray-700">Draft</Badge>
+| Komponen | Implementasi | Catatan |
+|----------|-------------|---------|
+| Button | `<button>` native + cva | type default "button" |
+| Input | `<input>` native | |
+| Textarea | `<textarea>` native | |
+| Label | `<label>` native | |
+| Select | native `<select>` tersembunyi + display visual | hybrid, placeholder & nilai selalu tampil |
+| Dialog | Radix UI (`@radix-ui/react-dialog`) | portal, overlay, animasi |
+| Card | shadcn (ring + custom shadow) | |
+| Badge | shadcn | |
+| Separator, Avatar | shadcn | |
 
-// In Production
-<Badge className="bg-blue-100 text-blue-700">Produksi</Badge>
-
-// QC
-<Badge className="bg-yellow-100 text-yellow-700">QC</Badge>
-
-// Shipped
-<Badge className="bg-green-100 text-green-700">Terkirim</Badge>
-```
-
-### Warning/Alert Cards
-```tsx
-<Card className="border-warning/30 bg-warning/5">
-  {/* Low stock content */}
-</Card>
-```
-
-### Profit Text
-```tsx
-<p className="text-green-600 font-semibold">
-  Rp 347,500
-</p>
-```
+**Catatan:** Base UI (`@base-ui/react/*`) dihapus karena bermasalah dengan interaksi di mobile browser (klik & controlled state tidak bekerja).
 
 ---
 
-## Next Steps (API Integration)
+## Konfigurasi
 
-### Phase 1: Setup Backend
-1. **Prisma Schema** (translate dari SQL design)
-2. **Supabase Connection** (PostgreSQL)
-3. **Generate Prisma Client** + migrations
-
-### Phase 2: API Routes (Next.js API)
+### next.config.ts
+```ts
+allowedDevOrigins: [
+  "192.168.*.*", "100.*.*.*", "10.*.*.*",
+  "172.16.*.*" ... "172.31.*.*",
+]
 ```
-/app/api
-├── /fabrics
-│   ├── route.ts          # GET (list), POST (create)
-│   └── [id]/route.ts     # GET, PATCH, DELETE
-├── /fabric-batches
-├── /orders
-├── /bom
-├── /production-timelines
-└── /order-costing
+Catatan: wildcard tunggal (`*`/`**`) tidak diizinkan Next.js — harus per-segment.
+
+### vercel.json
+```json
+{ "framework": "nextjs", "buildCommand": "next build", "installCommand": "npm install", "outputDirectory": ".next" }
 ```
-
-### Phase 3: Connect UI → API
-- Replace dummy data dengan `fetch()` calls
-- Add loading states (skeleton components)
-- Add error handling (toast notifications)
-- Add forms (create order, purchase fabric, etc.)
-
-### Phase 4: Advanced Features
-- Order detail page (`/orders/[id]`)
-- BOM builder (komposisi bahan)
-- Timeline progress tracker (drag & drop?)
-- Costing calculator (interactive)
-- Search & filters
-- Export reports (PDF/Excel)
+Vercel: **root directory = `app`**
 
 ---
 
-## Development Commands
+## Perintah
 
 ```bash
-# Start dev server
 cd /Users/nuralan/Personal/sanbox/hsport/app
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Add shadcn/ui components
-npx shadcn@latest add <component-name>
-
-# Run type check
-npm run type-check  # (perlu tambahkan script di package.json)
+npm run dev          # dev server :3000
+npm run build        # production build
+npm start            # serve build
+npx shadcn@latest add <component>
 ```
 
 ---
 
-## Access URL
+## Checklist Desain
 
-- **Local:** http://localhost:3000
-- **Network:** http://127.0.2.2:3000 (untuk testing di mobile di network yang sama)
-
----
-
-## Design Consistency Checklist
-
-✅ **Colors:**
-- Primary blue untuk interactive elements (button, active nav, links)
-- White background + subtle gray borders
-- Pastel accents untuk status (green success, peach warning)
-
-✅ **Typography:**
-- Headings: 2xl bold
-- Body: sm medium
-- Labels: xs muted
-
-✅ **Spacing:**
-- Cards: 3 (12px) spacing
-- Padding: 4-6 (16-24px) internal
-- Container: px-4 (16px) horizontal
-
-✅ **Borders:**
-- Rounded: 12px (--radius: 0.75rem)
-- Border color: subtle gray (oklch(0.93 0 0))
-
-✅ **Icons:**
-- Line style (strokeWidth: 2)
-- Size: h-5 w-5 (20px) untuk nav, h-4 w-4 (16px) untuk inline
-
----
-
-## Known Limitations (Prototype Phase)
-
-- ❌ No authentication (single user assumed)
-- ❌ No API integration (dummy data hardcoded)
-- ❌ No form validation
-- ❌ No loading/error states
-- ❌ No pagination (list items limited)
-- ❌ No real-time updates
-- ❌ No search/filter
-- ❌ No dark mode (light only)
-- ❌ No offline support
-
----
-
-## Screenshots (Manual Testing)
-
-**To verify UI:**
-1. Open http://localhost:3000
-2. Check Dashboard → stats cards, recent orders, low-stock alert
-3. Navigate bottom nav → verify active state
-4. Check Orders → list dengan status badges
-5. Check Inventory → low-stock warning backgrounds
-6. Check Production → timeline dengan stage icons
-7. Check Reports → profit card, trends, top fabrics
-
-**Expected:**
-- Mobile-optimized layout (max 512px width)
-- Bottom nav fixed, active item highlighted
-- Clean white cards dengan subtle borders
-- No visual glitches, proper spacing
-
----
-
-**Status:** UI prototype selesai, siap untuk user testing & API integration planning.
+✅ Card selalu kontras dengan background (bg-gray-50 + shadow + border)  
+✅ Low-stock & warning = merah (konsisten di semua halaman)  
+✅ Card compact + drill-down ke detail  
+✅ Tombol aman (Batal) menyala, tombol destruktif outline  
+✅ Mobile-first (max-w-lg 512px)  
+✅ Native components (kompatibel semua browser mobile)  
+✅ Toast feedback untuk semua aksi  
+✅ Siap wire API (semua data via mock-data terpusat)

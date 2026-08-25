@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/toast/toast-provider";
 
 interface UpdateTimelineDialogProps {
   open: boolean;
@@ -60,6 +61,7 @@ export function UpdateTimelineDialog({
       return acc;
     }, {} as Record<string, string>)
   );
+  const toast = useToast();
 
   const handleStatusChange = (stageId: string, status: string) => {
     setStageStatuses((prev) => ({
@@ -83,6 +85,7 @@ export function UpdateTimelineDialog({
     });
 
     onOpenChange(false);
+    toast.success(`Timeline ${orderNumber} berhasil diperbarui`);
   };
 
   const getStatusBadge = (status: string) => {

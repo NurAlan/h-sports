@@ -1,8 +1,9 @@
 # H-Sport: Database Schema Design
 
 **Database:** PostgreSQL (via Supabase or self-hosted)  
-**ORM:** Prisma  
-**Design Method:** FIFO inventory costing, waste tracking, production timeline
+**ORM:** Prisma (belum di-setup — roadmap Fase 1)  
+**Design Method:** FIFO inventory costing, waste tracking, production timeline  
+**Status:** ✅ Schema design final — implementasi Prisma/API belum dimulai
 
 ---
 

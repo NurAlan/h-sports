@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { getBOMForOrder } from "@/lib/mock-data";
 import { formatRupiah } from "@/lib/utils";
+import { useToast } from "@/components/toast/toast-provider";
 
 interface CostingCalculatorDialogProps {
   open: boolean;
@@ -41,6 +42,7 @@ export function CostingCalculatorDialog({
   const [pricingMethod, setPricingMethod] = useState<"markup" | "fixed_profit">("markup");
   const [markupPct, setMarkupPct] = useState("30");
   const [fixedProfit, setFixedProfit] = useState("");
+  const toast = useToast();
 
   // Material cost dari BOM (live)
   const materialCost = useMemo(
@@ -80,6 +82,7 @@ export function CostingCalculatorDialog({
       profitMargin,
     });
     onOpenChange(false);
+    toast.success("Costing berhasil disimpan");
   };
 
   return (

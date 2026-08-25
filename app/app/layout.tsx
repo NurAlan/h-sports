@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { BottomNav } from "@/components/bottom-nav";
+import { BottomNavWrapper } from "@/components/bottom-nav-wrapper";
+import { ToastProvider } from "@/components/toast/toast-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,13 +22,15 @@ export default function RootLayout({
   return (
     <html lang="id" className={inter.variable}>
       <body className="antialiased bg-background text-foreground">
-        {/* Main content dengan padding bottom untuk bottom nav */}
-        <main className="pb-20 min-h-screen bg-gray-50">
-          {children}
-        </main>
+        <ToastProvider>
+          {/* Main content dengan padding bottom untuk bottom nav */}
+          <main className="pb-20 min-h-screen bg-gray-50">
+            {children}
+          </main>
 
-        {/* Bottom Navigation (fixed) */}
-        <BottomNav />
+          {/* Bottom Navigation (fixed) — disembunyikan di /login */}
+          <BottomNavWrapper />
+        </ToastProvider>
       </body>
     </html>
   );

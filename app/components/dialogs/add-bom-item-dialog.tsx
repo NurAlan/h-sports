@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/components/toast/toast-provider";
 import { FABRIC_CATALOG, getFabricCatalogById } from "@/lib/master-data";
 import { getFabricAvgPrice, getFabricStock } from "@/lib/mock-data";
 import { formatRupiah } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function AddBOMItemDialog({
   const qtyActual = qtyRequiredNum * (1 + wasteNum / 100);
   const materialCost = qtyActual * avgPrice;
   const isStockEnough = stock >= qtyActual;
+  const toast = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +72,7 @@ export function AddBOMItemDialog({
     setQtyRequired("");
     setWastePercentage("10");
     onOpenChange(false);
+    toast.success(`Bahan ${selectedFabric?.name} ditambahkan ke BOM`);
   };
 
   return (

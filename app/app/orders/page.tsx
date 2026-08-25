@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FAB } from "@/components/fab";
 import {
   Package,
@@ -16,9 +17,20 @@ import {
   CalendarClock,
   Search,
   ArrowUpDown,
+  X,
+  Trash2,
 } from "lucide-react";
 import { CreateOrderDialog } from "@/components/dialogs/create-order-dialog";
-import { orders } from "@/lib/mock-data";
+import { useToast } from "@/components/toast/toast-provider";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { orders, type Order } from "@/lib/mock-data";
 import { formatDate, daysUntil, daysLeftLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -97,15 +109,18 @@ function getDeadlineBadgeClass(days: number, isShipped: boolean) {
 }
 
 export default function OrdersPage() {
+  const toast = useToast();
+  const [orderList, setOrderList] = useState<Order[]>(orders);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filter, setFilter] = useState<FilterValue>("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<
     "deadline_asc" | "deadline_desc" | "date_desc" | "date_asc"
   >("deadline_asc");
+  const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
 
   const filteredOrders = useMemo(() => {
-    let result = orders;
+    let result = orderList;
 
     // 1. Filter by status
     if (filter !== "all") {
@@ -139,21 +154,88 @@ export default function OrdersPage() {
         break;
     }
     return sorted;
-  }, [filter, search, sortBy]);
+  }, [filter, search, sortBy, orderList]);
 
   // Count per status untuk badge filter
   const counts = useMemo(() => {
-    const acc: Record<string, number> = { all: orders.length };
-    for (const o of orders) acc[o.status] = (acc[o.status] || 0) + 1;
+    const acc: Record<string, number> = { all: orderList.length };
+    for (const o of orderList) acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
-  }, []);
+  }, [orderList]);
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    setOrderList((prev) => prev.filter((o) => o.id !== deleteTarget.id));
+    toast.success(`Order ${deleteTarget.orderNumber} dihapus`);
+    setDeleteTarget(null);
+  };
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
       <PageHeader title="Orders" subtitle="Daftar pesanan kaos" />
 
-      {/* Filter status */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-4 px-4">
+      {/* 1. Search — paling atas (paling sering dipakai) */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Cari nama customer / no. order..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Bersihkan pencarian"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Sort */}
+        <div className="relative shrink-0">
+          <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <select
+            value={sortBy}
+            onChange={(e) =>
+              setSortBy(
+                e.target.value as
+                  | "deadline_asc"
+                  | "deadline_desc"
+                  | "date_desc"
+                  | "date_asc"
+              )
+            }
+            className="h-10 appearance-none rounded-lg border border-gray-300 bg-white pl-8 pr-7 text-xs font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="deadline_asc">Deadline ↑</option>
+            <option value="deadline_desc">Deadline ↓</option>
+            <option value="date_desc">Terbaru</option>
+            <option value="date_asc">Terlama</option>
+          </select>
+          <svg
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+      </div>
+
+      {/* 2. Filter status — di bawah search */}
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-3 -mx-4 px-4">
         {filterOptions.map((opt) => (
           <button
             key={opt.value}
@@ -181,55 +263,27 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {/* Search + Sort */}
-      <div className="flex items-center gap-2 mb-4">
-        {/* Search input */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Cari nama customer / no. order..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          />
-        </div>
-
-        {/* Sort select */}
-        <div className="relative shrink-0">
-          <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-          <select
-            value={sortBy}
-            onChange={(e) =>
-              setSortBy(
-                e.target.value as
-                  | "deadline_asc"
-                  | "deadline_desc"
-                  | "date_desc"
-                  | "date_asc"
-              )
-            }
-            className="h-9 appearance-none rounded-lg border border-gray-300 bg-white pl-8 pr-7 text-xs font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      {/* 3. Result count */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-muted-foreground">
+          Menampilkan{" "}
+          <span className="font-semibold text-foreground">
+            {filteredOrders.length}
+          </span>{" "}
+          dari {orderList.length} order
+        </p>
+        {(search || filter !== "all") && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setFilter("all");
+            }}
+            className="text-xs font-medium text-primary hover:underline"
           >
-            <option value="deadline_asc">Deadline ↑</option>
-            <option value="deadline_desc">Deadline ↓</option>
-            <option value="date_desc">Terbaru</option>
-            <option value="date_asc">Terlama</option>
-          </select>
-          <svg
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
+            Reset filter
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -266,6 +320,18 @@ export default function OrdersPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeleteTarget(order);
+                        }}
+                        aria-label={`Hapus ${order.orderNumber}`}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                       <div
                         className={`${config.iconClass} p-1.5 rounded-lg shadow-sm`}
                       >
@@ -335,6 +401,49 @@ export default function OrdersPage() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
       />
+
+      {/* Dialog konfirmasi hapus order */}
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Hapus Order?
+            </DialogTitle>
+            <DialogDescription>
+              Order{" "}
+              <span className="font-semibold text-foreground">
+                "{deleteTarget?.orderNumber}"
+              </span>{" "}
+              ({deleteTarget?.customerName}) akan dihapus secara permanen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-xs text-red-700">
+            Tindakan ini tidak bisa dibatalkan. Data BOM, timeline, dan costing
+            yang terkait juga akan terhapus.
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setDeleteTarget(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={confirmDelete}
+            >
+              Ya, Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

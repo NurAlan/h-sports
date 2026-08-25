@@ -1,7 +1,7 @@
 # H-Sport: Design Decisions
 
 **Tanggal:** 25 Agustus 2026  
-**Status:** LOCKED ✅ (ready for implementation)
+**Status:** LOCKED ✅ — Sudah diimplementasikan di UI prototype (mock data)
 
 ---
 

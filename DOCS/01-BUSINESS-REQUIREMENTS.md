@@ -1,7 +1,7 @@
 # H-Sport: Business Requirements Document (BRD)
 
 **Tanggal:** 25 Agustus 2026  
-**Status:** Draft - Konsultasi Awal  
+**Status:** ✅ Final — Design dikunci & UI prototype selesai (API pending)  
 **Stakeholder:** Owner (single user, prototype phase)
 
 ---

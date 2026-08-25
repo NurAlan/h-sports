@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FABRIC_CATALOG } from "@/lib/master-data";
+import { useToast } from "@/components/toast/toast-provider";
 
 interface AddFabricPurchaseDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ export function AddFabricPurchaseDialog({
   open,
   onOpenChange,
 }: AddFabricPurchaseDialogProps) {
+  const toast = useToast();
   const [fabricId, setFabricId] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(
@@ -58,6 +60,7 @@ export function AddFabricPurchaseDialog({
     setPricePerKg("");
     
     onOpenChange(false);
+    toast.success("Pembelian kain berhasil disimpan");
   };
 
   return (

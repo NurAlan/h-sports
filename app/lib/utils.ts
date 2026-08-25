@@ -34,3 +34,10 @@ export function daysLeftLabel(days: number): string {
   if (days === 1) return "Besok";
   return `${days} hari lagi`;
 }
+
+/** Geser tanggal ISO maju/mundur (e.g. "2026-08-25" -1 bulan = "2026-07-25") */
+export function shiftMonth(dateStr: string, months: number): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split("T")[0];
+}
