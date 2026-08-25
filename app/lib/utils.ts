@@ -18,3 +18,19 @@ export function formatDate(isoDate: string): string {
     year: "numeric",
   });
 }
+
+/** Jumlah hari dari hari ini sampai deadline (0 = hari ini, negatif = sudah lewat) */
+export function daysUntil(isoDate: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(isoDate + "T00:00:00");
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+/** Label sisa hari: "Hari ini", "Besok", "3 hari lagi", "Terlambat 1 hari" */
+export function daysLeftLabel(days: number): string {
+  if (days < 0) return `Terlambat ${Math.abs(days)} hari`;
+  if (days === 0) return "Hari ini";
+  if (days === 1) return "Besok";
+  return `${days} hari lagi`;
+}

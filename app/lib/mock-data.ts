@@ -26,6 +26,7 @@ export interface Order {
   specification: string;
   status: "draft" | "in_production" | "qc" | "shipped" | "cancelled";
   orderDate: string;
+  deadline: string; // estimasi selesai (due date)
   profit: string;
   stage: string;
 }
@@ -135,10 +136,10 @@ export const orderCostings: Record<string, OrderCosting> = {
 };
 
 export const orders: Order[] = [
-  { id: "1", orderNumber: "ORD-20260825-001", customerName: "Toko Baju Sejahtera", customerContact: "08123456789", qtyItems: 50, specification: "Ukuran: M, L, XL\nWarna: Navy Blue\nDesain: Logo depan", status: "in_production", orderDate: "2026-08-25", profit: "Rp 406,090", stage: "Jahit" },
-  { id: "2", orderNumber: "ORD-20260824-003", customerName: "PT Garmen Indo", customerContact: "021-1234567", qtyItems: 100, specification: "Ukuran: S, M, L, XL\nWarna: Hitam, Putih", status: "qc", orderDate: "2026-08-24", profit: "Rp 838,900", stage: "QC" },
-  { id: "3", orderNumber: "ORD-20260823-002", customerName: "CV Tekstil Makmur", customerContact: "087654321", qtyItems: 75, specification: "Ukuran: M, L\nWarna: Army Green", status: "shipped", orderDate: "2026-08-23", profit: "Rp 890,000", stage: "Terkirim" },
-  { id: "4", orderNumber: "ORD-20260822-001", customerName: "Toko ABC", customerContact: "", qtyItems: 30, specification: "Ukuran: XL\nWarna: Navy", status: "draft", orderDate: "2026-08-22", profit: "-", stage: "Draft" },
+  { id: "1", orderNumber: "ORD-20260825-001", customerName: "Toko Baju Sejahtera", customerContact: "08123456789", qtyItems: 50, specification: "Ukuran: M, L, XL\nWarna: Navy Blue\nDesain: Logo depan", status: "in_production", orderDate: "2026-08-25", deadline: "2026-08-28", profit: "Rp 406,090", stage: "Jahit" },
+  { id: "2", orderNumber: "ORD-20260824-003", customerName: "PT Garmen Indo", customerContact: "021-1234567", qtyItems: 100, specification: "Ukuran: S, M, L, XL\nWarna: Hitam, Putih", status: "qc", orderDate: "2026-08-24", deadline: "2026-08-26", profit: "Rp 838,900", stage: "QC" },
+  { id: "3", orderNumber: "ORD-20260823-002", customerName: "CV Tekstil Makmur", customerContact: "087654321", qtyItems: 75, specification: "Ukuran: M, L\nWarna: Army Green", status: "shipped", orderDate: "2026-08-23", deadline: "2026-08-25", profit: "Rp 890,000", stage: "Terkirim" },
+  { id: "4", orderNumber: "ORD-20260822-001", customerName: "Toko ABC", customerContact: "", qtyItems: 30, specification: "Ukuran: XL\nWarna: Navy", status: "draft", orderDate: "2026-08-22", deadline: "2026-08-30", profit: "-", stage: "Draft" },
 ];
 
 // === HELPERS ===

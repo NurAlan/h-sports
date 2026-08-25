@@ -62,7 +62,7 @@ export default function OrdersPage() {
         subtitle="Daftar pesanan kaos"
       />
 
-      <div className="space-y-3">
+      <div className="space-y-5">
         {orders.map((order) => {
           const config = statusConfig[order.status] || statusConfig.draft;
           const StatusIcon = config.icon;
