@@ -250,7 +250,9 @@ export default function OrderDetailPage() {
           ? `Order ${order.orderNumber} masuk produksi — stok dipotong (FIFO)`
           : `Order ${order.orderNumber} → ${statusConfig[nextAction.next]?.label ?? nextAction.next}`
       );
-      setOrder((prev) => (prev ? { ...prev, status: updated.status } : prev));
+      // Refetch detail order — timeline auto-created di server langsung tampil
+      const fresh = await api.get<typeof order>(`/api/orders/${order.id}`);
+      setOrder(fresh);
     } catch (err) {
       toast.error(`Gagal update status: ${(err as Error).message}`);
     } finally {
@@ -556,59 +558,8 @@ export default function OrderDetailPage() {
         </CardContent>
       </Card>
 
-      {/* 2. Timeline Produksi */}
+      {/* 2. Costing — HPP & Harga Jual */}
       <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-        <CardHeader className="pb-2 flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary" />
-            Timeline Produksi
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {isDraft && (
-              <span className="text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
-                ⚠️ Kunci Draft
-              </span>
-            )}
-            <Button
-              size="sm"
-              className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => setTimelineOpen(true)}
-              disabled={isDraft}
-              title={isDraft ? "Mulai produksi dulu untuk update timeline" : undefined}
-            >
-              Update
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isDraft && (
-            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Timeline dikunci saat status Draft. Klik <b>Mulai Produksi</b> di atas untuk mengaktifkan update timeline.
-            </p>
-          )}
-          {timeline.length === 0 && !isDraft && (
-            <p className="text-sm text-muted-foreground text-center py-4">Belum ada timeline</p>
-          )}
-          {timeline.length === 0 && isDraft && (
-            <p className="text-sm text-muted-foreground text-center py-4">Belum ada timeline</p>
-          )}
-          {timeline.map((stage) => (
-            <div key={stage.id} className="flex items-center gap-3 pb-2 border-b border-border/60 last:border-0 last:pb-0">
-              <div className="flex-shrink-0">{getStageIcon(stage.status)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{stage.stageName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {stage.estimatedHrs ? `Estimasi ±${stage.estimatedHrs}h` : ""}
-                </p>
-              </div>
-              <div>{getStageBadge(stage.status)}</div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* 3. Costing — HPP & Harga Jual */}
-      <Card className="card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
         <CardHeader className="pb-2 flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
@@ -667,6 +618,58 @@ export default function OrderDetailPage() {
               <Button size="sm" onClick={() => setCostingOpen(true)}>Hitung Harga Jual</Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* 3. Timeline Produksi */}
+      <Card className="card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+        <CardHeader className="pb-2 flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            Timeline Produksi
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {isDraft && (
+              <span className="text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                ⚠️ Kunci Draft
+              </span>
+            )}
+            <Button
+              size="sm"
+              className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setTimelineOpen(true)}
+              disabled={isDraft}
+              title={isDraft ? "Mulai produksi dulu untuk update timeline" : undefined}
+            >
+              Update
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isDraft && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Timeline dikunci saat status Draft. Klik <b>Mulai Produksi</b> di atas untuk mengaktifkan update timeline.
+            </p>
+          )}
+          {timeline.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {isDraft
+                ? "Timeline akan muncul otomatis setelah order mulai produksi"
+                : "Belum ada timeline"}
+            </p>
+          )}
+          {timeline.map((stage) => (
+            <div key={stage.id} className="flex items-center gap-3 pb-2 border-b border-border/60 last:border-0 last:pb-0">
+              <div className="flex-shrink-0">{getStageIcon(stage.status)}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{stage.stageName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {stage.estimatedHrs ? `Estimasi ±${stage.estimatedHrs}h` : ""}
+                </p>
+              </div>
+              <div>{getStageBadge(stage.status)}</div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 

@@ -54,6 +54,28 @@ export async function PATCH(request: Request, { params }: Params) {
     try {
       await prisma.$transaction(async (tx) => {
         await allocateBOMFIFO(tx, id);
+
+        // Auto-create 5 stage timeline produksi (semua not_started)
+        // Supaya timeline langsung muncul setelah order masuk produksi
+        const stageCount = await tx.productionTimeline.count({ where: { orderId: id } });
+        if (stageCount === 0) {
+          const stages = [
+            { stageName: "pengukuran", name: "Pengukuran" },
+            { stageName: "pemotongan", name: "Pemotongan" },
+            { stageName: "jahit", name: "Jahit" },
+            { stageName: "finishing", name: "Finishing" },
+            { stageName: "qc", name: "QC" },
+          ];
+          for (const s of stages) {
+            await tx.productionTimeline.create({
+              data: {
+                orderId: id,
+                stageName: s.stageName,
+                status: "not_started",
+              },
+            });
+          }
+        }
       });
     } catch (e) {
       return NextResponse.json(
