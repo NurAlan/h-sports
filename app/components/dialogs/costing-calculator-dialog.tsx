@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,8 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getBOMForOrder } from "@/lib/mock-data";
-import { formatRupiah } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { formatRupiah, profitColor } from "@/lib/utils";
 import { useToast } from "@/components/toast/toast-provider";
 
 interface CostingCalculatorDialogProps {
@@ -42,12 +43,27 @@ export function CostingCalculatorDialog({
   const [pricingMethod, setPricingMethod] = useState<"markup" | "fixed_profit">("markup");
   const [markupPct, setMarkupPct] = useState("30");
   const [fixedProfit, setFixedProfit] = useState("");
+  const [bomItems, setBomItems] = useState<{ materialCost: number }[]>([]);
+  const [bomLoading, setBomLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  // Material cost dari BOM (live)
+  // Fetch BOM dari API saat dialog dibuka — material cost sesuai DB
+  useEffect(() => {
+    if (open && orderId) {
+      setBomLoading(true);
+      api
+        .get<{ materialCost: number }[]>(`/api/orders/${orderId}/bom`)
+        .then((items) => setBomItems(items))
+        .catch(() => setBomItems([]))
+        .finally(() => setBomLoading(false));
+    }
+  }, [open, orderId]);
+
+  // Material cost dari BOM (live dari API)
   const materialCost = useMemo(
-    () => getBOMForOrder(orderId).reduce((s, i) => s + i.materialCost, 0),
-    [orderId, open]
+    () => bomItems.reduce((s, i) => s + i.materialCost, 0),
+    [bomItems]
   );
 
   const laborNum = parseFloat(laborCost) || 0;
@@ -65,24 +81,25 @@ export function CostingCalculatorDialog({
   const profit = sellingPrice - hpp - shippingNum;
   const profitMargin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API call
-    console.log({
-      orderId,
-      materialCost,
-      laborCost: laborNum,
-      hpp,
-      pricingMethod,
-      markupPct: markupNum,
-      fixedProfit: fixedProfitNum,
-      sellingPrice,
-      shippingCost: shippingNum,
-      profit,
-      profitMargin,
-    });
-    onOpenChange(false);
-    toast.success("Costing berhasil disimpan");
+    setLoading(true);
+    try {
+      await api.put(`/api/orders/${orderId}/costing`, {
+        laborCost,
+        pricingMethod,
+        markupPct,
+        fixedProfit,
+        shippingCost,
+      });
+      onOpenChange(false);
+      toast.success("Costing berhasil disimpan");
+      window.location.reload();
+    } catch (err) {
+      toast.error(`Gagal: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,20 +117,22 @@ export function CostingCalculatorDialog({
             <div className="grid gap-2">
               <Label>Material Cost (dari BOM)</Label>
               <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 text-sm font-semibold">
-                {formatRupiah(materialCost)}
+                {bomLoading ? (
+                  <span className="text-muted-foreground animate-pulse">Memuat...</span>
+                ) : (
+                  formatRupiah(materialCost)
+                )}
               </div>
             </div>
 
             {/* Labor cost */}
             <div className="grid gap-2">
               <Label htmlFor="labor">Upah Jahit (Rp)</Label>
-              <Input
+              <CurrencyInput
                 id="labor"
-                type="number"
-                step="10000"
-                min="0"
+                placeholder="500.000"
                 value={laborCost}
-                onChange={(e) => setLaborCost(e.target.value)}
+                onChange={setLaborCost}
               />
             </div>
 
@@ -149,14 +168,11 @@ export function CostingCalculatorDialog({
             ) : (
               <div className="grid gap-2">
                 <Label htmlFor="fixed">Profit Tetap (Rp)</Label>
-                <Input
+                <CurrencyInput
                   id="fixed"
-                  type="number"
-                  step="10000"
-                  min="0"
-                  placeholder="100000"
+                  placeholder="100.000"
                   value={fixedProfit}
-                  onChange={(e) => setFixedProfit(e.target.value)}
+                  onChange={setFixedProfit}
                 />
               </div>
             )}
@@ -164,13 +180,11 @@ export function CostingCalculatorDialog({
             {/* Shipping */}
             <div className="grid gap-2">
               <Label htmlFor="shipping">Ongkos Kirim (Rp)</Label>
-              <Input
+              <CurrencyInput
                 id="shipping"
-                type="number"
-                step="5000"
-                min="0"
+                placeholder="50.000"
                 value={shippingCost}
-                onChange={(e) => setShippingCost(e.target.value)}
+                onChange={setShippingCost}
               />
             </div>
 
@@ -186,12 +200,12 @@ export function CostingCalculatorDialog({
               </div>
               <Separator />
               <div className="flex justify-between text-sm">
-                <span className="font-semibold text-green-600">Profit</span>
-                <span className="font-bold text-green-600">{formatRupiah(profit)}</span>
+                <span className={profitColor(profit)}>Profit</span>
+                <span className={`font-bold ${profitColor(profit)}`}>{formatRupiah(profit)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Margin</span>
-                <span className="font-medium text-green-600">{profitMargin.toFixed(1)}%</span>
+                <span className={`font-medium ${profitColor(profit)}`}>{profitMargin.toFixed(1)}%</span>
               </div>
               {profit < 0 && (
                 <p className="text-xs text-red-600 font-medium">⚠️ Rugi! Naikkan markup atau profit tetap.</p>
@@ -199,8 +213,15 @@ export function CostingCalculatorDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-            <Button type="submit">Simpan Costing</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Menyimpan...
+                </span>
+              ) : "Simpan Costing"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -22,13 +23,10 @@ import {
   Boxes,
   Pencil,
 } from "lucide-react";
-import {
-  getFabricById,
-  fabricBatches as mockBatches,
-  getFabricStock,
-  getFabricAvgPrice,
-  type FabricBatch,
-} from "@/lib/mock-data";
+import { FAB } from "@/components/fab";
+import { AddFabricPurchaseDialog } from "@/components/dialogs/add-fabric-purchase-dialog";
+import { api, type Fabric, type FabricBatch } from "@/lib/api";
+import { DetailSkeleton } from "@/components/skeletons";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import { useToast } from "@/components/toast/toast-provider";
 
@@ -48,13 +46,13 @@ function getBatchStatus(remaining: number, purchased: number) {
 
 export default function InventoryDetailPage() {
   const params = useParams<{ id: string }>();
-  const fabric = getFabricById(params.id);
   const toast = useToast();
 
-  const [batches, setBatches] = useState<FabricBatch[]>(
-    mockBatches.filter((b) => b.fabricId === params.id)
-  );
+  const [fabric, setFabric] = useState<Fabric | null>(null);
+  const [batches, setBatches] = useState<FabricBatch[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<FabricBatch | null>(null);
+  const [isAddStockOpen, setIsAddStockOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     supplierName: "",
     purchaseDate: "",
@@ -62,6 +60,19 @@ export default function InventoryDetailPage() {
     qtyRemaining: "",
     pricePerKg: "",
   });
+
+  useEffect(() => {
+    Promise.all([
+      api.get<Fabric>(`/api/fabrics/${params.id}`),
+      api.get<FabricBatch[]>(`/api/fabric-batches?fabricId=${params.id}`),
+    ])
+      .then(([fabricData, batchData]) => {
+        setFabric(fabricData);
+        setBatches(batchData);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [params.id]);
 
   const stock = batches.reduce((s, b) => s + b.qtyRemaining, 0);
   const totalValue = batches.reduce((s, b) => s + b.qtyRemaining * b.pricePerKg, 0);
@@ -84,23 +95,49 @@ export default function InventoryDetailPage() {
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    const updated: FabricBatch = {
-      ...editTarget,
-      supplierName: editForm.supplierName,
-      purchaseDate: editForm.purchaseDate,
-      qtyPurchased: parseFloat(editForm.qtyPurchased) || 0,
-      qtyRemaining: parseFloat(editForm.qtyRemaining) || 0,
-      pricePerKg: parseFloat(editForm.pricePerKg) || 0,
-    };
-    setBatches((prev) => prev.map((b) => (b.id === editTarget.id ? updated : b)));
-    toast.success("Data batch berhasil diperbarui");
-    setEditTarget(null);
+
+    try {
+      await api.patch(`/api/fabric-batches/${editTarget.id}`, {
+        supplierName: editForm.supplierName,
+        purchaseDate: editForm.purchaseDate,
+        qtyPurchased: parseFloat(editForm.qtyPurchased) || 0,
+        qtyRemaining: parseFloat(editForm.qtyRemaining) || 0,
+        pricePerKg: parseFloat(editForm.pricePerKg) || 0,
+      });
+
+      setBatches((prev) =>
+        prev.map((b) =>
+          b.id === editTarget.id
+            ? {
+                ...b,
+                supplierName: editForm.supplierName,
+                purchaseDate: editForm.purchaseDate,
+                qtyPurchased: parseFloat(editForm.qtyPurchased) || 0,
+                qtyRemaining: parseFloat(editForm.qtyRemaining) || 0,
+                pricePerKg: parseFloat(editForm.pricePerKg) || 0,
+              }
+            : b
+        )
+      );
+      toast.success("Data batch berhasil diperbarui");
+      setEditTarget(null);
+    } catch (err) {
+      toast.error(`Gagal menyimpan: ${(err as Error).message}`);
+    }
   };
 
   const fabricName = fabric?.name ?? "Tidak ditemukan";
+
+  if (loading) {
+    return (
+      <div className="container max-w-lg mx-auto px-4 py-6">
+        <DetailSkeleton />
+      </div>
+    );
+  }
 
   if (!fabric) {
     return (
@@ -301,13 +338,10 @@ export default function InventoryDetailPage() {
               </div>
               <div className="grid gap-2">
                 <Label>Harga per kg (Rp)</Label>
-                <Input
-                  type="number"
-                  step="100"
-                  min="0"
+                <CurrencyInput
                   value={editForm.pricePerKg}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, pricePerKg: e.target.value }))
+                  onChange={(val) =>
+                    setEditForm((f) => ({ ...f, pricePerKg: val }))
                   }
                   required
                 />
@@ -324,6 +358,18 @@ export default function InventoryDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Tambah Stok — auto-fill dari data inventory */}
+      <AddFabricPurchaseDialog
+        open={isAddStockOpen}
+        onOpenChange={setIsAddStockOpen}
+        initialFabricId={fabric.id}
+        initialPricePerKg={avgPrice}
+        initialSupplierName={batches[0]?.supplierName}
+      />
+
+      {/* FAB Tambah Stok — konsisten dengan halaman lain */}
+      <FAB onClick={() => setIsAddStockOpen(true)} label="Tambah Stok" />
     </div>
   );
 }

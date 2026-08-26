@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/toast/toast-provider";
+import { api } from "@/lib/api";
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function CreateOrderDialog({
   onOrderCreated,
 }: CreateOrderDialogProps) {
   const toast = useToast();
+  const [loading, setLoading] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -36,39 +38,35 @@ export function CreateOrderDialog({
   );
   const [deadline, setDeadline] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    try {
+      const newOrder = await api.post<{ orderNumber: string }>("/api/orders", {
+        customerName,
+        customerContact,
+        qtyItems: parseInt(quantity),
+        specification,
+        orderDate,
+        deadline,
+      });
 
-    const orderNumber = `ORD-${new Date()
-      .toISOString()
-      .split("T")[0]
-      .replace(/-/g, "")}-${String(
-      Math.floor(Math.random() * 900) + 100
-    ).padStart(3, "0")}`;
+      setCustomerName("");
+      setCustomerContact("");
+      setQuantity("");
+      setSpecification("");
+      setOrderDate(new Date().toISOString().split("T")[0]);
+      setDeadline("");
 
-    // TODO: API call to create order
-    console.log({
-      orderNumber,
-      customerName,
-      customerContact,
-      quantity: parseInt(quantity),
-      specification,
-      orderDate,
-      deadline,
-      status: "draft",
-    });
-
-    // Reset form
-    setCustomerName("");
-    setCustomerContact("");
-    setQuantity("");
-    setSpecification("");
-    setOrderDate(new Date().toISOString().split("T")[0]);
-    setDeadline("");
-
-    onOpenChange(false);
-    onOrderCreated?.(orderNumber);
-    toast.success(`Order ${orderNumber} berhasil dibuat`);
+      onOpenChange(false);
+      onOrderCreated?.(newOrder.orderNumber);
+      toast.success(`Order ${newOrder.orderNumber} berhasil dibuat`);
+      window.location.reload();
+    } catch (err) {
+      toast.error(`Gagal: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Minimum deadline = tanggal order (tidak boleh sebelum order date)
@@ -87,9 +85,9 @@ export function CreateOrderDialog({
           <div className="grid gap-4 py-4">
             {/* Customer Name */}
             <div className="grid gap-2">
-              <Label htmlFor="customer">Nama Customer *</Label>
+              <Label htmlFor="customerName">Nama Customer *</Label>
               <Input
-                id="customer"
+                id="customerName"
                 placeholder="Contoh: Toko Baju Sejahtera"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
@@ -99,10 +97,10 @@ export function CreateOrderDialog({
 
             {/* Customer Contact */}
             <div className="grid gap-2">
-              <Label htmlFor="contact">Kontak (Telp/Email)</Label>
+              <Label htmlFor="customerContact">No. HP / Kontak</Label>
               <Input
-                id="contact"
-                placeholder="08123456789 atau email@domain.com"
+                id="customerContact"
+                placeholder="Contoh: 08123456789"
                 value={customerContact}
                 onChange={(e) => setCustomerContact(e.target.value)}
               />
@@ -110,12 +108,12 @@ export function CreateOrderDialog({
 
             {/* Quantity */}
             <div className="grid gap-2">
-              <Label htmlFor="qty">Jumlah Kaos (pcs) *</Label>
+              <Label htmlFor="quantity">Jumlah (pcs) *</Label>
               <Input
-                id="qty"
+                id="quantity"
                 type="number"
                 min="1"
-                placeholder="50"
+                placeholder="Contoh: 100"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 required
@@ -124,40 +122,34 @@ export function CreateOrderDialog({
 
             {/* Specification */}
             <div className="grid gap-2">
-              <Label htmlFor="spec">Spesifikasi</Label>
+              <Label htmlFor="specification">Spesifikasi</Label>
               <Textarea
-                id="spec"
-                placeholder={"Ukuran: M, L, XL\nWarna: Navy Blue\nDesain: Logo depan"}
+                id="specification"
+                placeholder="Contoh: Kaos polos putih ukuran M-XL, sablon depan"
                 value={specification}
                 onChange={(e) => setSpecification(e.target.value)}
                 rows={3}
               />
             </div>
 
-            {/* Tanggal Order + Deadline berdampingan */}
             <div className="grid grid-cols-2 gap-3">
+              {/* Order Date */}
               <div className="grid gap-2">
-                <Label htmlFor="date">Tanggal Order *</Label>
+                <Label htmlFor="orderDate">Tanggal Order</Label>
                 <Input
-                  id="date"
+                  id="orderDate"
                   type="date"
                   value={orderDate}
-                  onChange={(e) => {
-                    setOrderDate(e.target.value);
-                    // Reset deadline jika sebelum order date baru
-                    if (deadline && deadline < e.target.value) {
-                      setDeadline("");
-                    }
-                  }}
+                  onChange={(e) => setOrderDate(e.target.value)}
                   required
                 />
               </div>
+
+              {/* Deadline */}
               <div className="grid gap-2">
                 <Label htmlFor="deadline">
-                  Deadline *{" "}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    (selesai)
-                  </span>
+                  Deadline{" "}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="deadline"
@@ -176,14 +168,20 @@ export function CreateOrderDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Batal
             </Button>
             <Button
               type="submit"
-              disabled={!customerName || !quantity || !deadline}
+              disabled={!customerName || !quantity || !deadline || loading}
             >
-              Buat Order
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Menyimpan...
+                </span>
+              ) : "Buat Order"}
             </Button>
           </DialogFooter>
         </form>

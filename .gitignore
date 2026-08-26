@@ -12,6 +12,10 @@ out/
 .env.local
 .env.*.local
 
+# Google OAuth credentials — JANGAN pernah di-commit!
+app/client_secret_*.json
+client_secret_*.json
+
 # Logs
 *.log
 npm-debug.log*

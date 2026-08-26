@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FAB } from "@/components/fab";
+import { api, type Order } from "@/lib/api";
+import { OrderCardSkeleton } from "@/components/skeletons";
 import {
   Package,
   FileText,
@@ -30,8 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { orders, type Order } from "@/lib/mock-data";
-import { formatDate, daysUntil, daysLeftLabel } from "@/lib/utils";
+import { formatDate, daysUntil, daysLeftLabel, formatRupiah, profitColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<
@@ -110,7 +112,8 @@ function getDeadlineBadgeClass(days: number, isShipped: boolean) {
 
 export default function OrdersPage() {
   const toast = useToast();
-  const [orderList, setOrderList] = useState<Order[]>(orders);
+  const [orderList, setOrderList] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filter, setFilter] = useState<FilterValue>("all");
   const [search, setSearch] = useState("");
@@ -118,6 +121,19 @@ export default function OrdersPage() {
     "deadline_asc" | "deadline_desc" | "date_desc" | "date_asc"
   >("deadline_asc");
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
+
+  useEffect(() => {
+    api
+      .get<Order[]>("/api/orders")
+      .then((data) => {
+        setOrderList(data);
+        setIsLoading(false);
+      })
+      .catch((e) => {
+        toast.error(`Gagal memuat: ${e.message}`);
+        setIsLoading(false);
+      });
+  }, [toast]);
 
   const filteredOrders = useMemo(() => {
     let result = orderList;
@@ -141,10 +157,10 @@ export default function OrdersPage() {
     const sorted = [...result];
     switch (sortBy) {
       case "deadline_asc":
-        sorted.sort((a, b) => a.deadline.localeCompare(b.deadline));
+        sorted.sort((a, b) => (a.deadline || "9999-99-99").localeCompare(b.deadline || "9999-99-99"));
         break;
       case "deadline_desc":
-        sorted.sort((a, b) => b.deadline.localeCompare(a.deadline));
+        sorted.sort((a, b) => (b.deadline || "9999-99-99").localeCompare(a.deadline || "9999-99-99"));
         break;
       case "date_desc":
         sorted.sort((a, b) => b.orderDate.localeCompare(a.orderDate));
@@ -172,7 +188,7 @@ export default function OrdersPage() {
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
-      <PageHeader title="Orders" subtitle="Daftar pesanan kaos" />
+      <PageHeader title="Orders" subtitle="Kelola pesanan kaos" action={<MenuGuide menuKey="orders" />} />
 
       {/* 1. Search — paling atas (paling sering dipakai) */}
       <div className="flex items-center gap-2 mb-3">
@@ -287,11 +303,19 @@ export default function OrdersPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        {filteredOrders.map((order) => {
+        {isLoading && (
+          <div className="space-y-4">
+            <OrderCardSkeleton />
+            <OrderCardSkeleton />
+            <OrderCardSkeleton />
+          </div>
+        )}
+
+        {!isLoading && filteredOrders.map((order) => {
           const config = statusConfig[order.status] || statusConfig.draft;
           const StatusIcon = config.icon;
           const isShipped = order.status === "shipped";
-          const days = daysUntil(order.deadline);
+          const days = order.deadline ? daysUntil(order.deadline) : 999;
           const cardClass = getDeadlineCardClass(days, isShipped);
           const badgeClass = getDeadlineBadgeClass(days, isShipped);
 
@@ -351,7 +375,7 @@ export default function OrdersPage() {
                       <span className="flex items-center gap-0.5 min-w-0">
                         <CalendarClock className="h-3 w-3 shrink-0" />
                         <span className="truncate">
-                          {formatDate(order.deadline)}
+                          {order.deadline ? formatDate(order.deadline) : "—"}
                         </span>
                         <Badge
                           variant="secondary"
@@ -367,12 +391,14 @@ export default function OrdersPage() {
                       </p>
                       <p
                         className={`text-xs font-bold ${
-                          order.profit === "-"
+                          order.costing?.profit == null
                             ? "text-muted-foreground"
-                            : "text-green-600"
+                            : profitColor(order.costing.profit)
                         }`}
                       >
-                        {order.profit}
+                        {order.costing
+                          ? formatRupiah(order.costing.profit)
+                          : "-"}
                       </p>
                     </div>
                   </div>

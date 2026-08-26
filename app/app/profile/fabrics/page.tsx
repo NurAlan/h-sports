@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,8 +23,8 @@ import {
   ArrowLeft,
   Package,
 } from "lucide-react";
-import { FABRIC_CATALOG } from "@/lib/master-data";
-import { fabricBatches, bomItems, getFabricStock } from "@/lib/mock-data";
+import { api, type Fabric } from "@/lib/api";
+import { ListItemSkeleton } from "@/components/skeletons";
 import { useToast } from "@/components/toast/toast-provider";
 
 interface FabricEntry {
@@ -33,17 +33,11 @@ interface FabricEntry {
   unit: string;
 }
 
-/** Cek apakah kain sudah pernah dipakai (pembelian/BOM) — tidak boleh dihapus */
-function isFabricUsed(fabricId: string): boolean {
-  return (
-    fabricBatches.some((b) => b.fabricId === fabricId) ||
-    bomItems.some((b) => b.fabricId === fabricId)
-  );
-}
+// Hapus? Cek riwayat/pemakaian kain — ditangani server (409)
 
 export default function FabricsPage() {
   const toast = useToast();
-  const [fabrics, setFabrics] = useState<FabricEntry[]>(FABRIC_CATALOG);
+  const [fabrics, setFabrics] = useState<FabricEntry[]>([]);
   const [search, setSearch] = useState("");
 
   // Dialog state
@@ -54,6 +48,15 @@ export default function FabricsPage() {
 
   // Delete confirmation dialog
   const [deleteTarget, setDeleteTarget] = useState<FabricEntry | null>(null);
+
+  useEffect(() => {
+    api
+      .get<Fabric[]>("/api/fabrics")
+      .then((data) =>
+        setFabrics(data.map((f) => ({ id: f.id, name: f.name, unit: f.unit })))
+      )
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -75,42 +78,51 @@ export default function FabricsPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
 
-    if (editing) {
-      // Edit
-      setFabrics((prev) =>
-        prev.map((f) => (f.id === editing.id ? { ...f, name: trimmed, unit } : f))
-      );
-      toast.success(`Kain "${trimmed}" berhasil diperbarui`);
-    } else {
-      // Tambah baru
-      const newId = `fabric-${Date.now()}`;
-      setFabrics((prev) => [...prev, { id: newId, name: trimmed, unit }]);
-      toast.success(`Kain "${trimmed}" berhasil ditambahkan`);
+    try {
+      if (editing) {
+        await api.patch(`/api/fabrics/${editing.id}`, { name: trimmed, unit });
+        setFabrics((prev) =>
+          prev.map((f) => (f.id === editing.id ? { ...f, name: trimmed, unit } : f))
+        );
+        toast.success(`Kain "${trimmed}" berhasil diperbarui`);
+      } else {
+        const created = await api.post<Fabric>("/api/fabrics", {
+          name: trimmed,
+          unit,
+        });
+        setFabrics((prev) => [
+          ...prev,
+          { id: created.id, name: created.name, unit: created.unit },
+        ]);
+        toast.success(`Kain "${trimmed}" berhasil ditambahkan`);
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      toast.error(`Gagal: ${(err as Error).message}`);
     }
-    setDialogOpen(false);
   };
 
   const handleDelete = (fabric: FabricEntry) => {
-    if (isFabricUsed(fabric.id)) {
-      toast.error(
-        `"${fabric.name}" sudah punya riwayat pembelian/BOM — tidak bisa dihapus`
-      );
-      return;
-    }
-    // Buka dialog konfirmasi, bukan window.confirm
+    // Buka dialog konfirmasi — validasi "punya riwayat" ditangani server (409)
     setDeleteTarget(fabric);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setFabrics((prev) => prev.filter((f) => f.id !== deleteTarget.id));
-    toast.success(`Kain "${deleteTarget.name}" dihapus`);
-    setDeleteTarget(null);
+    try {
+      await api.del(`/api/fabrics/${deleteTarget.id}`);
+      setFabrics((prev) => prev.filter((f) => f.id !== deleteTarget.id));
+      toast.success(`Kain "${deleteTarget.name}" dihapus`);
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(`Gagal hapus: ${(err as Error).message}`);
+      setDeleteTarget(null);
+    }
   };
 
   return (
@@ -146,9 +158,15 @@ export default function FabricsPage() {
 
       {/* List */}
       <div className="flex flex-col gap-2.5">
+        {fabrics.length === 0 && !filtered.length && (
+          <div className="space-y-2.5">
+            <ListItemSkeleton />
+            <ListItemSkeleton />
+            <ListItemSkeleton />
+            <ListItemSkeleton />
+          </div>
+        )}
         {filtered.map((fabric) => {
-          const used = isFabricUsed(fabric.id);
-          const stock = getFabricStock(fabric.id);
           return (
             <Card key={fabric.id} className="border-gray-300 bg-white card-shadow">
               <CardContent className="py-3 px-4">
@@ -161,8 +179,7 @@ export default function FabricsPage() {
                       {fabric.name}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {fabric.unit} •{" "}
-                      {used ? `Stok ${stock} kg • punya riwayat` : "Belum dipakai"}
+                      {fabric.unit} • Belum dipakai
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

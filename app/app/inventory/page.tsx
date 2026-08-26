@@ -1,36 +1,62 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FAB } from "@/components/fab";
 import { ChevronRight, AlertTriangle, Search } from "lucide-react";
 import { AddFabricPurchaseDialog } from "@/components/dialogs/add-fabric-purchase-dialog";
-import {
-  fabrics,
-  getFabricStock,
-  getFabricAvgPrice,
-  getFabricLastPurchase,
-} from "@/lib/mock-data";
+import { api } from "@/lib/api";
+import { FabricCardSkeleton } from "@/components/skeletons";
 import { formatRupiah, formatDate } from "@/lib/utils";
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  unit: string;
+  reorderPoint: number;
+  stock: number;
+  avgPrice: number;
+  lastPurchase: string | null;
+  batchCount: number;
+  isLowStock: boolean;
+}
 
 export default function InventoryPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<InventoryItem[]>("/api/inventory")
+      .then((data) => {
+        setItems(data);
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(e.message);
+        setLoading(false);
+      });
+  }, []);
 
   const filteredFabrics = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return fabrics;
-    return fabrics.filter((f) => f.name.toLowerCase().includes(q));
-  }, [search]);
+    if (!q) return items;
+    return items.filter((f) => f.name.toLowerCase().includes(q));
+  }, [items, search]);
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
       <PageHeader
         title="Inventory"
         subtitle="Stok kain & pembelian"
+        action={<MenuGuide menuKey="inventory" />}
       />
 
       {/* Search nama bahan */}
@@ -46,12 +72,20 @@ export default function InventoryPage() {
       </div>
 
       {/* Compact cards — grid 2 kolom */}
+      {loading && (
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <FabricCardSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
-        {filteredFabrics.map((fabric) => {
-          const stock = getFabricStock(fabric.id);
-          const avgPrice = getFabricAvgPrice(fabric.id);
-          const lastPurchase = getFabricLastPurchase(fabric.id);
-          const isLowStock = stock <= fabric.reorderPoint;
+        {!loading && filteredFabrics.map((fabric) => {
+          const stock = fabric.stock;
+          const avgPrice = fabric.avgPrice;
+          const lastPurchase = fabric.lastPurchase;
+          const isLowStock = fabric.isLowStock;
 
           return (
             <Link key={fabric.id} href={`/inventory/${fabric.id}`} className="h-full">

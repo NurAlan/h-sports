@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
+import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,9 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import {
-  orders,
-  getCostingForOrder,
-  bomItems,
-} from "@/lib/mock-data";
-import { formatRupiah, formatDate, shiftMonth, cn } from "@/lib/utils";
+import { api, type Order, type ReportsData } from "@/lib/api";
+import { ReportsSkeleton } from "@/components/skeletons";
+import { formatRupiah, formatDate, shiftMonth, cn, profitColor } from "@/lib/utils";
 import { PeriodFilter, type PeriodPreset } from "@/components/reports/period-filter";
 import { ComparisonBarChart } from "@/components/reports/comparison-bar-chart";
 import { useToast } from "@/components/toast/toast-provider";
@@ -53,12 +51,28 @@ function getRangeForPreset(preset: PeriodPreset): { start: string; end: string }
 
 export default function ReportsPage() {
   const toast = useToast();
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [summaries, setSummaries] = useState<ReportsData["summaries"]>([]);
+  const [apiSummary, setApiSummary] = useState<ReportsData["summary"] | null>(null);
+  const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<PeriodPreset>("thisMonth");
   const initial = getRangeForPreset("thisMonth");
   const [startDate, setStartDate] = useState(initial.start);
   const [endDate, setEndDate] = useState(initial.end);
   const [sortKey, setSortKey] = useState<SortKey>("orderDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  useEffect(() => {
+    api
+      .get<ReportsData>("/api/reports")
+      .then((data) => {
+        setAllOrders(data.orders);
+        setSummaries(data.summaries);
+        setApiSummary(data.summary);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const isCustom = preset === "custom";
 
@@ -92,10 +106,10 @@ export default function ReportsPage() {
     [range]
   );
 
-  const computeSummary = (ordersInRange: typeof orders) => {
+  const computeSummary = (ordersInRange: Order[]) => {
     let revenue = 0, hpp = 0, profit = 0, counted = 0;
     for (const o of ordersInRange) {
-      const c = getCostingForOrder(o.id);
+      const c = o.costing;
       if (!c) continue;
       revenue += c.sellingPrice;
       hpp += c.hpp;
@@ -106,12 +120,12 @@ export default function ReportsPage() {
   };
 
   const currOrders = useMemo(
-    () => orders.filter((o) => o.orderDate >= range.start && o.orderDate <= range.end),
-    [range]
+    () => allOrders.filter((o) => o.orderDate.slice(0, 10) >= range.start && o.orderDate.slice(0, 10) <= range.end),
+    [allOrders, range]
   );
   const prevOrders = useMemo(
-    () => orders.filter((o) => o.orderDate >= prevRange.start && o.orderDate <= prevRange.end),
-    [prevRange]
+    () => allOrders.filter((o) => o.orderDate.slice(0, 10) >= prevRange.start && o.orderDate.slice(0, 10) <= prevRange.end),
+    [allOrders, prevRange]
   );
 
   const summary = useMemo(() => computeSummary(currOrders), [currOrders]);
@@ -122,7 +136,7 @@ export default function ReportsPage() {
 
   const sortedOrders = useMemo(() => {
     const rows = currOrders.map((o) => {
-      const c = getCostingForOrder(o.id);
+      const c = o.costing;
       return {
         order: o,
         omzet: c?.sellingPrice ?? null,
@@ -187,7 +201,7 @@ export default function ReportsPage() {
       "Upah", "HPP", "Ongkir", "Profit", "Margin %", "Status",
     ];
     const rows = currOrders.map((o) => {
-      const c = getCostingForOrder(o.id);
+      const c = o.costing;
       return [
         o.orderDate,
         o.orderNumber,
@@ -224,7 +238,7 @@ export default function ReportsPage() {
   const topCustomers = useMemo(() => {
     const map = new Map<string, { count: number; profit: number }>();
     for (const o of currOrders) {
-      const c = getCostingForOrder(o.id);
+      const c = o.costing;
       if (!c) continue;
       const cur = map.get(o.customerName) || { count: 0, profit: 0 };
       cur.count += 1;
@@ -238,19 +252,17 @@ export default function ReportsPage() {
   }, [currOrders]);
 
   const topFabrics = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const b of bomItems) {
-      map.set(b.fabricName, (map.get(b.fabricName) || 0) + b.qtyActual);
-    }
-    return [...map.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([name, kg]) => ({ name, kg }));
+    // Data pemakaian kain akan tersedia dari API saat integrasi penuh
+    return [] as { name: string; kg: number }[];
   }, []);
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
-      <PageHeader title="Laporan" subtitle="Profit, tren & detail transaksi" />
+      <PageHeader title="Laporan" subtitle="Profit, tren & detail transaksi" action={<MenuGuide menuKey="reports" />} />
+
+      {loading && <ReportsSkeleton />}
+
+      {!loading && (<>
 
       {/* Filter periode */}
       <Card className="mb-4 card-shadow-lg bg-white border-gray-300">
@@ -346,7 +358,7 @@ export default function ReportsPage() {
           <CardTitle className="text-base">Omzet vs HPP (6 bulan)</CardTitle>
         </CardHeader>
         <CardContent>
-          <ComparisonBarChart />
+          <ComparisonBarChart data={summaries} />
         </CardContent>
       </Card>
 
@@ -471,7 +483,7 @@ export default function ReportsPage() {
                   <p className="text-sm font-medium text-foreground truncate">{c.name}</p>
                   <p className="text-[11px] text-muted-foreground">{c.count} order</p>
                 </div>
-                <p className="text-sm font-semibold text-green-600">{formatRupiah(c.profit)}</p>
+                <p className={`text-sm font-semibold ${profitColor(c.profit)}`}>{formatRupiah(c.profit)}</p>
               </div>
             ))}
           </CardContent>
@@ -507,6 +519,8 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+      </>
+      )}
     </div>
   );
 }

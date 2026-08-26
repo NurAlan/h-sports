@@ -1,37 +1,15 @@
-import { NextResponse, type NextRequest } from "next/server";
-
-const AUTH_COOKIE = "hsport-auth";
+import { type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 
 /**
- * Proteksi halaman: semua route (kecuali /login) memerlukan cookie login.
- * Mock auth — akan diganti auth asli (NextAuth/Supabase) saat integrasi.
+ * Middleware: proteksi route + refresh session Supabase.
+ * Halaman selain /login & /api/auth/* wajib punya session valid.
  */
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const authed = request.cookies.get(AUTH_COOKIE)?.value === "1";
-
-  // Halaman login: jika sudah login, langsung ke dashboard
-  if (pathname.startsWith("/login")) {
-    if (authed) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // Halaman lain: wajib login
-  if (!authed) {
-    const loginUrl = new URL("/login", request.url);
-    // Simpan halaman tujuan supaya bisa redirect balik setelah login
-    if (pathname !== "/") {
-      loginUrl.searchParams.set("next", pathname);
-    }
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return NextResponse.next();
+export async function middleware(request: NextRequest) {
+  return await updateSession(request);
 }
 
 export const config = {
-  // Semua route kecuali static assets & API internal
+  // Semua route kecuali static assets
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

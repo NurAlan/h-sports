@@ -1,13 +1,53 @@
 # H-Sport: Database Schema Design
 
-**Database:** PostgreSQL (via Supabase or self-hosted)  
-**ORM:** Prisma (belum di-setup — roadmap Fase 1)  
+**Database:** PostgreSQL (via Supabase)  
+**ORM:** Prisma (roadmap)  
 **Design Method:** FIFO inventory costing, waste tracking, production timeline  
-**Status:** ✅ Schema design final — implementasi Prisma/API belum dimulai
+**Status:** Auth (Supabase) ✅ diimplementasi — tabel bisnis (fabrics, orders, dll) belum
 
 ---
 
-## Entity Relationship Diagram (ERD)
+## 0. Autentikasi & Profil (Supabase Auth)
+
+**Auth provider:** Supabase Auth (Google OAuth + email/password)  
+**Pembatasan:** "Allow new users to sign up" = OFF → hanya email terdaftar yang bisa login  
+**SQL setup:** `DOCS/sql/01-profiles.sql` (jalankan di SQL Editor)
+
+### Tabel `profiles` (multi-user)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | PK → auth.users.id, ON DELETE CASCADE | User ID (dari Supabase Auth) |
+| email | text | UNIQUE, NOT NULL | Email terdaftar |
+| full_name | text | NULL | Nama lengkap (dari Google) |
+| avatar_url | text | NULL | Foto profil (dari Google) |
+| business_name | text | NULL | Nama usaha |
+| phone | text | NULL | Nomor telepon |
+| role | text | DEFAULT 'staff' CHECK (owner/admin/staff) | Role akses multi-user |
+| created_at | timestamptz | DEFAULT now() | |
+| updated_at | timestamptz | DEFAULT now() | |
+
+**Trigger:** `handle_new_user()` — auto-create profile saat user baru ditambahkan di `auth.users`  
+**RLS:** user bisa select/update profil sendiri; owner/admin bisa select semua
+
+### Alur Auth
+```
+Login Google → Supabase OAuth → callback /auth/callback → session cookie
+Login Password → signInWithPassword (email harus terdaftar di auth.users)
+Logout → supabase.auth.signOut() → redirect /login
+Middleware → refresh session + proteksi route (lib/supabase/middleware.ts)
+```
+
+### Env Required
+```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY   (client)
+SUPABASE_SECRET_KEY                    (server-side only, jangan di-commit)
+```
+
+---
+
+## 1. Entity Relationship Diagram (ERD)
 
 ```
 ┌─────────────────┐

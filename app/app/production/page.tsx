@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,7 +16,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { UpdateTimelineDialog } from "@/components/dialogs/update-timeline-dialog";
-import { orders, getTimelineForOrder, getBOMForOrder } from "@/lib/mock-data";
+import { api, type Order, type ProductionTimeline } from "@/lib/api";
+import { OrderCardSkeleton } from "@/components/skeletons";
 import {
   formatDate,
   daysUntil,
@@ -23,7 +25,6 @@ import {
   cn,
 } from "@/lib/utils";
 
-// Warna card berdasarkan deadline (konsisten dengan Orders)
 function getCardClass(days: number, isShipped: boolean) {
   if (isShipped) return "border-green-300 bg-green-100";
   if (days < 0) return "border-red-500 bg-red-300";
@@ -51,7 +52,6 @@ function getStageIcon(status: string) {
   }
 }
 
-/** Warna progress bar berdasarkan % */
 function getProgressColor(pct: number) {
   if (pct >= 75) return "bg-green-500";
   if (pct >= 50) return "bg-blue-500";
@@ -59,87 +59,102 @@ function getProgressColor(pct: number) {
   return "bg-red-500";
 }
 
-/** Indikator estimasi vs aktual untuk stage yang berjalan/selesai */
-function getEstimateStatus(stage: {
-  status: string;
-  actualHrs: number | null;
-  estimatedHrs: number;
-}) {
-  if (stage.status === "not_started" || stage.actualHrs === null) return null;
-  const diff = stage.actualHrs - stage.estimatedHrs;
-  if (stage.status === "in_progress") {
-    if (diff > 0) {
-      return {
-        label: `Melebihi estimasi ${diff.toFixed(1)}h`,
-        className: "text-red-600",
-      };
-    }
-    return {
-      label: `Sisa ${(stage.estimatedHrs - stage.actualHrs).toFixed(1)}h dari estimasi`,
-      className: "text-green-600",
-    };
-  }
-  // completed
-  if (diff > 0) {
-    return {
-      label: `Terlambat ${diff.toFixed(1)}h dari estimasi`,
-      className: "text-red-600",
-    };
-  }
+/** Indikator estimasi vs aktual untuk stage (in_progress) */
+function getEstimateStatus(stage: ProductionTimeline) {
+  if (stage.status === "not_started") return null;
   return {
-    label: "Sesuai estimasi",
-    className: "text-green-600",
+    label:
+      stage.status === "in_progress"
+        ? `Sedang dikerjakan${stage.estimatedHrs ? ` (estimasi ${stage.estimatedHrs}h)` : ""}`
+        : stage.estimatedHrs
+          ? `Selesai (${stage.estimatedHrs}h estimasi)`
+          : "Selesai",
+    className: stage.status === "in_progress" ? "text-blue-600" : "text-green-600",
   };
 }
 
+interface OrderWithData extends Order {
+  timelines: ProductionTimeline[];
+  bomItems: { fabricName: string; qtyActual: number }[];
+}
+
 export default function ProductionPage() {
+  const [orders, setOrders] = useState<OrderWithData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<{
     id: string;
     orderNumber: string;
     stages: Array<{ name: string; status: string }>;
   } | null>(null);
 
-  const activeOrders = orders
-    .filter((o) => o.status === "in_production" || o.status === "qc")
-    .sort((a, b) => a.deadline.localeCompare(b.deadline)); // deadline terdekat dulu
+  useEffect(() => {
+    api
+      .get<OrderWithData[]>("/api/production")
+      .then((data) => {
+        setOrders(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-  const handleOrderClick = (id: string, orderNumber: string) => {
+  const handleOrderClick = (order: OrderWithData) => {
     setSelectedOrder({
-      id,
-      orderNumber,
-      stages: getTimelineForOrder(id),
+      id: order.id,
+      orderNumber: order.orderNumber,
+      stages: order.timelines.map((t) => ({ name: t.stageName, status: t.status })),
     });
   };
+
+  if (loading) {
+    return (
+      <div className="container max-w-lg mx-auto px-4 py-6">
+        <PageHeader title="Production" subtitle="Memuat..." />
+        <div className="space-y-4">
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
       <PageHeader
         title="Production"
         subtitle="Timeline produksi order"
+        action={<MenuGuide menuKey="production" />}
       />
 
+      {orders.length === 0 && (
+        <Card className="bg-white border-gray-300 card-shadow-lg">
+          <CardContent className="py-10 text-center">
+            <p className="text-sm font-medium text-foreground mb-1">
+              Tidak ada order dalam produksi
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Order yang berstatus Produksi atau QC akan muncul di sini
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-col gap-5">
-        {activeOrders.map((order) => {
-          const timeline = getTimelineForOrder(order.id);
-          const bom = getBOMForOrder(order.id);
-          const days = daysUntil(order.deadline);
+        {orders.map((order) => {
+          const timeline = order.timelines;
+          const bom = order.bomItems;
+          const days = order.deadline ? daysUntil(order.deadline) : 999;
           const isShipped = order.status === "shipped";
 
-          // Progress keseluruhan
-          const completedCount = timeline.filter(
-            (s) => s.status === "completed"
-          ).length;
+          const completedCount = timeline.filter((s) => s.status === "completed").length;
           const progressPct =
             timeline.length > 0
               ? Math.round((completedCount / timeline.length) * 100)
               : 0;
 
-          // Estimasi sisa jam dari stage yang belum selesai
           const remainingHrs = timeline
             .filter((s) => s.status !== "completed")
-            .reduce((sum, s) => sum + s.estimatedHrs, 0);
+            .reduce((sum, s) => sum + (s.estimatedHrs ?? 0), 0);
 
-          // Total bahan yang dibutuhkan
           const totalBomKg = bom.reduce((s, i) => s + i.qtyActual, 0);
 
           return (
@@ -149,168 +164,109 @@ export default function ProductionPage() {
                 days,
                 isShipped
               )}`}
-              onClick={() => handleOrderClick(order.id, order.orderNumber)}
+              onClick={() => handleOrderClick(order)}
             >
-              <CardHeader className="pb-2">
-                {/* Header: order number + status + deadline */}
-                <div className="flex items-start justify-between gap-2">
+              <CardContent className="pt-4 pb-4">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <p className="text-sm font-bold text-foreground">
-                        {order.orderNumber}
-                      </p>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          order.status === "qc"
-                            ? "bg-amber-200 text-amber-800"
-                            : "bg-blue-200 text-blue-800"
-                        }
-                      >
-                        {order.status === "qc" ? "QC" : "Produksi"}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {order.orderNumber}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
                       {order.customerName} • {order.qtyItems} pcs
                     </p>
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={`shrink-0 ${getDeadlineBadgeClass(days, isShipped)}`}
-                  >
-                    {daysLeftLabel(days)}
+                  <Badge variant="secondary" className={getDeadlineBadgeClass(days, isShipped)}>
+                    {isShipped
+                      ? "Selesai"
+                      : order.deadline
+                        ? daysLeftLabel(days)
+                        : "No deadline"}
                   </Badge>
                 </div>
-              </CardHeader>
 
-              <CardContent className="space-y-3">
-                {/* Progress bar keseluruhan */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-medium text-foreground">
+                {/* Progress */}
+                <div className="mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-muted-foreground">
                       Progress
-                    </span>
-                    <span className="text-xs font-bold">
+                    </p>
+                    <p className="text-xs font-semibold text-foreground">
                       {completedCount}/{timeline.length} stage • {progressPct}%
-                    </span>
+                    </p>
                   </div>
-                  <div className="h-2.5 w-full bg-white/60 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-white/70 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${getProgressColor(
-                        progressPct
-                      )}`}
-                      style={{ width: `${Math.max(progressPct, 4)}%` }}
+                      className={`h-full rounded-full ${getProgressColor(progressPct)}`}
+                      style={{ width: `${progressPct}%` }}
                     />
                   </div>
                 </div>
 
-                {/* Stage list dengan estimasi vs aktual */}
-                <div className="space-y-2">
-                  {timeline.map((stage, index) => {
+                {/* Stages */}
+                <div className="space-y-1.5 mb-3">
+                  {timeline.map((stage, i) => {
                     const estimate = getEstimateStatus(stage);
                     return (
-                      <div
-                        key={stage.name}
-                        className="flex items-center gap-2.5 py-1.5 border-b border-border/40 last:border-0"
-                      >
-                        <div className="flex-shrink-0">
-                          {getStageIcon(stage.status)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">
-                            {index + 1}. {stage.name}
-                          </p>
-                          {estimate ? (
-                            <p
-                              className={`text-xs ${estimate.className} flex items-center gap-1`}
-                            >
-                              {estimate.label === "Sesuai estimasi" ? (
-                                <CheckCircle2 className="h-3 w-3" />
-                              ) : estimate.label.startsWith("Terlambat") ||
-                                estimate.label.startsWith("Melebihi") ? (
-                                <AlertTriangle className="h-3 w-3" />
-                              ) : (
-                                <Clock className="h-3 w-3" />
-                              )}
-                              {estimate.label}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              Estimasi {stage.estimatedHrs}h
-                            </p>
-                          )}
-                        </div>
-                        <div className="shrink-0">
-                          <Badge
-                            variant="secondary"
-                            className={`text-[10px] px-1.5 py-0 ${
-                              stage.status === "completed"
-                                ? "bg-green-200 text-green-800"
-                                : stage.status === "in_progress"
-                                ? "bg-blue-200 text-blue-800"
-                                : "bg-gray-200 text-gray-600"
-                            }`}
-                          >
-                            {stage.status === "completed"
-                              ? "Selesai"
-                              : stage.status === "in_progress"
-                              ? "Berjalan"
-                              : "Antri"}
-                          </Badge>
-                        </div>
+                      <div key={stage.id} className="flex items-center gap-2">
+                        {getStageIcon(stage.status)}
+                        <p className="text-xs text-foreground flex-1">
+                          {stage.stageName}
+                        </p>
+                        {estimate ? (
+                          <span className={`text-[10px] font-medium ${estimate.className}`}>
+                            {estimate.label}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">
+                            {stage.estimatedHrs ? `±${stage.estimatedHrs}h` : ""}
+                          </span>
+                        )}
+                        {i < timeline.length - 1 && (
+                          <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
+                        )}
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Footer: ETA + BOM ringkas + link detail */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <CalendarClock className="h-3 w-3 shrink-0" />
-                      Deadline: {formatDate(order.deadline)} • Sisa {remainingHrs}h kerja
-                    </p>
-                    {bom.length > 0 && (
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Package className="h-3 w-3 shrink-0" />
-                        Bahan: {bom.length} jenis • {totalBomKg.toFixed(1)} kg
-                      </p>
-                    )}
-                  </div>
+                {/* Footer */}
+                <div className="flex items-center justify-between border-t border-border/50 pt-2.5">
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <CalendarClock className="h-3 w-3" />
+                    {order.deadline
+                      ? `Deadline ${formatDate(order.deadline)}${remainingHrs > 0 ? ` • sisa ±${remainingHrs}h` : ""}`
+                      : "Tanpa deadline"}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Package className="h-3 w-3" />
+                    {bom.length} jenis • {totalBomKg.toFixed(1)} kg
+                  </span>
+                </div>
+
+                {bom.some(() => true) && (
                   <Link
                     href={`/orders/${order.id}`}
+                    className="mt-2 text-[11px] font-medium text-primary hover:underline"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline shrink-0"
                   >
-                    Detail <ArrowRight className="h-3 w-3" />
+                    Lihat detail order →
                   </Link>
-                </div>
+                )}
               </CardContent>
             </Card>
           );
         })}
-
-        {activeOrders.length === 0 && (
-          <Card className="bg-white border-gray-300 card-shadow-lg">
-            <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                Belum ada order dalam produksi
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
-      {/* Update Timeline Dialog */}
-      {selectedOrder && (
-        <UpdateTimelineDialog
-          open={!!selectedOrder}
-          onOpenChange={(open) => !open && setSelectedOrder(null)}
-          orderId={selectedOrder.id}
-          orderNumber={selectedOrder.orderNumber}
-          currentStages={selectedOrder.stages}
-        />
-      )}
+      <UpdateTimelineDialog
+        open={!!selectedOrder}
+        onOpenChange={(open) => !open && setSelectedOrder(null)}
+        orderId={selectedOrder?.id ?? ""}
+        orderNumber={selectedOrder?.orderNumber ?? ""}
+        currentStages={selectedOrder?.stages ?? []}
+      />
     </div>
   );
 }

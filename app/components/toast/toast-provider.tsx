@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -63,12 +64,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [dismiss]
   );
 
-  const api: ToastAPI = {
-    success: (m) => push("success", m),
-    error: (m) => push("error", m),
-    warning: (m) => push("warning", m),
-    info: (m) => push("info", m),
-  };
+  // Stabilkan referensi api — mencegah infinite loop di useEffect consumer
+  const api = useMemo<ToastAPI>(
+    () => ({
+      success: (m) => push("success", m),
+      error: (m) => push("error", m),
+      warning: (m) => push("warning", m),
+      info: (m) => push("info", m),
+    }),
+    [push]
+  );
 
   return (
     <ToastContext.Provider value={api}>

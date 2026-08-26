@@ -9,12 +9,11 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { monthlyStats } from "@/lib/mock-data";
+import { BarChart3 } from "lucide-react";
+import type { MonthlySummary } from "@/lib/api";
 
-/** Formatter sumbu Y: 18.5jt */
 const formatAxis = (v: number) => `${(v / 1000000).toFixed(1)}jt`;
 
-/** Tooltip custom — ringkas & branded */
 function CustomTooltip({
   active,
   payload,
@@ -44,19 +43,43 @@ function CustomTooltip({
   );
 }
 
-export function RevenueChart() {
+/** Area chart omzet vs profit — data dari API (monthly_summaries) */
+export function RevenueChart({ data }: { data: MonthlySummary[] }) {
+  const chartData = data.map((d) => ({
+    month: d.month.slice(5) + "/" + d.month.slice(0, 4).slice(2),
+    revenue: d.totalRevenue,
+    profit: d.totalProfit,
+  }));
+
+  // Empty state — belum ada data omzet
+  if (chartData.length === 0) {
+    return (
+      <div className="h-52 flex flex-col items-center justify-center text-center px-6">
+        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mb-2.5">
+          <BarChart3 className="h-5 w-5 text-gray-400" />
+        </div>
+        <p className="text-sm font-medium text-muted-foreground mb-1">
+          Belum ada data omzet
+        </p>
+        <p className="text-xs text-muted-foreground/70 leading-relaxed">
+          Grafik akan muncul setelah order memiliki data costing
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-48 w-full">
+    <div className="h-52 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={monthlyStats} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
           <defs>
-            <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
+            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#2563eb" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
+            <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
@@ -79,7 +102,7 @@ export function RevenueChart() {
             name="Omzet"
             stroke="#2563eb"
             strokeWidth={2}
-            fill="url(#gradRevenue)"
+            fill="url(#revGrad)"
           />
           <Area
             type="monotone"
@@ -87,7 +110,7 @@ export function RevenueChart() {
             name="Profit"
             stroke="#22c55e"
             strokeWidth={2}
-            fill="url(#gradProfit)"
+            fill="url(#profitGrad)"
           />
         </AreaChart>
       </ResponsiveContainer>

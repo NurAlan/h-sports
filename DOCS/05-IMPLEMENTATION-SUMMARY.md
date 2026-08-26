@@ -1,9 +1,9 @@
 # H-Sport — Implementation Summary
 
-**Status:** ✅ UI Prototype Complete — 12 halaman, 5 dialog, mock auth, toast  
+**Status:** ✅ UI Prototype + Auth (Supabase) + API Routes (Prisma) + In-App Tutorial  
 **Dev Server:** http://localhost:3000  
 **Production:** https://h-sports-zeta.vercel.app  
-**Tech Stack:** Next.js 14 + TypeScript + Tailwind CSS v4 + shadcn/ui + Recharts
+**Tech Stack:** Next.js 14 + TypeScript + Tailwind CSS v4 + shadcn/ui + Recharts + Prisma + Supabase
 
 ---
 
@@ -146,27 +146,36 @@
 
 ---
 
-## 🚦 Roadmap (yang belum dikerjakan)
+## 🚦 Roadmap (status terkini)
 
-### 🔴 Fase 1: Database & API
-1. **Prisma Setup** — install Prisma, translate schema dari DOCS/03-DATABASE-SCHEMA.md
-2. **Supabase / PostgreSQL** — koneksi database
-3. **API Routes** — `/api/fabrics`, `/api/fabric-batches`, `/api/orders`, `/api/bom`, `/api/production-timelines`, `/api/order-costing`
-4. **Connect UI → API** — ganti mock data dengan fetch + loading states + error handling
+### ✅ Selesai
+- [x] Auth Supabase (Google OAuth + password, signup off, middleware)
+- [x] API Routes lengkap (14 endpoint) — lihat `DOCS/07-API-REFERENCE.md`
+- [x] Prisma ORM + schema (8 model) + FIFO logic
+- [x] In-App Tutorial (tombol "Panduan" di semua menu)
+- [x] Deploy Vercel (auto-deploy)
+
+### 🔴 Dalam Proses: Wire UI → API
+- [x] Dashboard → `/api/dashboard`
+- [x] Orders list → `/api/orders`
+- [ ] Inventory grid → `/api/inventory`
+- [ ] Inventory detail → `/api/fabric-batches`
+- [ ] Production → `/api/production`
+- [ ] Reports → `/api/reports`
+- [ ] Order detail → `/api/orders/[id]`
+- [ ] Master Fabric → `/api/fabrics`
+- [ ] Dialogs (POST/PATCH/PUT)
+- [ ] Hapus `lib/mock-data.ts` setelah semua ter-wire
 
 ### 🟡 Fase 2: UX Enhancements
-5. **Toast notifications** — sudah ✅ (5 dialog)
-6. **Loading skeletons** — saat fetch data
-7. **Update status order** — tombol workflow di detail (Draft → Produksi → QC → Selesai)
-8. **Form validation** lebih baik — validasi custom, pesan error per field
-9. **Pagination** — untuk list panjang
+- [ ] Loading skeletons (sebagian sudah: dashboard, orders)
+- [ ] Pagination untuk list panjang
 
 ### 🔵 Fase 3: Advanced
-10. **Export PDF** — (CSV sudah ✅)
-11. **Dark mode** — opsional
-12. **Auth real** — NextAuth / Supabase auth
-13. **Offline support** — PWA
-14. **Realtime** — update stok / timeline live
+- [ ] Export PDF
+- [ ] Dark mode
+- [ ] Realtime updates
+- [ ] PWA offline
 
 ---
 

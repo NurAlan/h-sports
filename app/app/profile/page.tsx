@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { Card, CardContent } from "@/components/ui/card";
-import { useToast } from "@/components/toast/toast-provider";
+import { createClient } from "@/lib/supabase/client";
 import {
   User,
   SwatchBook,
@@ -12,6 +13,7 @@ import {
   LogOut,
   ChevronRight,
 } from "lucide-react";
+import { UserCard } from "@/components/profile/user-card";
 
 const menuItems = [
   {
@@ -39,17 +41,18 @@ const menuItems = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const toast = useToast();
 
-  const handleLogout = () => {
-    // Hapus cookie session mock
-    document.cookie = "hsport-auth=; path=/; max-age=0";
-    toast.info("Anda telah logout");
-    setTimeout(() => router.push("/login"), 600);
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
   };
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
-      <PageHeader title="Profile" subtitle="Pengaturan akun & data master" />
+      {/* User card — info dari cookie (parsed client-side) */}
+      <UserCard />
+      <PageHeader title="Profile" subtitle="Pengaturan akun & data master" action={<MenuGuide menuKey="profile" />} />
 
       <div className="flex flex-col gap-3 mb-6">
         {menuItems.map((item) => {

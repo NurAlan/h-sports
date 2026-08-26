@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shirt, Eye, EyeOff } from "lucide-react";
-import { useState, Suspense } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useState, Suspense, useEffect } from "react";
 
 function LoginForm() {
   const router = useRouter();
@@ -16,27 +17,63 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  // Tampilkan error dari OAuth callback (jika ada) — HANYA sekali,
+  // lalu hapus param dari URL supaya tidak muncul lagi saat refresh
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      toast.error(`Gagal masuk: ${error}`);
+      router.replace(window.location.pathname, { scroll: false });
+    }
+  }, [searchParams, toast, router]);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      toast.error(`Gagal: ${error.message}`);
+      setGoogleLoading(false);
+      return;
+    }
+    if (data.url) {
+      // Full-page redirect ke Google
+      window.location.href = data.url;
+    }
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      toast.error("Username dan password harus diisi");
+      toast.error("Email dan password harus diisi");
       return;
     }
     setLoading(true);
-    // Mock auth — set cookie session
-    setTimeout(() => {
-      document.cookie = "hsport-auth=1; path=/; max-age=86400";
+    // Login via Supabase Auth (email/password)
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email: username.trim(),
+      password,
+    });
+    if (error) {
+      toast.error(
+        error.message === "Invalid login credentials"
+          ? "Email atau password salah, atau akun belum terdaftar"
+          : `Gagal login: ${error.message}`
+      );
       setLoading(false);
-      toast.success(`Selamat datang, ${username}!`);
-      // Redirect balik ke halaman tujuan (jika ada), default dashboard
-      const next = searchParams.get("next");
-      router.push(next && next.startsWith("/") ? next : "/");
-    }, 800);
-  };
-
-  const handleGoogleSignIn = () => {
-    toast.info("Fitur Google Sign-In akan tersedia setelah integrasi auth");
+      return;
+    }
+    toast.success("Login berhasil!");
+    const next = searchParams.get("next");
+    router.push(next && next.startsWith("/") ? next : "/");
   };
 
   return (
@@ -57,13 +94,14 @@ function LoginForm() {
         <div className="rounded-2xl border border-gray-300 bg-white p-6 card-shadow-lg">
           <form onSubmit={handleSignIn} className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Email</Label>
               <Input
                 id="username"
-                placeholder="Masukkan username"
+                type="email"
+                placeholder="nama@email.com"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
+                autoComplete="email"
                 autoFocus
               />
             </div>
@@ -114,7 +152,9 @@ function LoginForm() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-gray-50 transition-colors"
+            disabled={googleLoading}
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-gray-50 disabled:opacity-60 transition-colors"
+            title="Hanya berfungsi dari localhost (buka di Mac, bukan dari HP)"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
               <path
@@ -136,10 +176,15 @@ function LoginForm() {
             </svg>
             Sign in with Google
           </button>
+          {googleLoading && (
+            <p className="text-center text-xs text-muted-foreground mt-2">
+              Mengarahkan ke Google...
+            </p>
+          )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Aplikasi masih dalam tahap pengembangan. Login dengan username apa pun.
+          Login menggunakan email yang telah terdaftar oleh admin.
         </p>
       </div>
     </div>

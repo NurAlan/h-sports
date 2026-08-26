@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/toast/toast-provider";
+import { api } from "@/lib/api";
 
 interface UpdateTimelineDialogProps {
   open: boolean;
@@ -53,15 +54,24 @@ export function UpdateTimelineDialog({
   orderNumber,
   currentStages = [],
 }: UpdateTimelineDialogProps) {
-  // Initialize stage statuses from currentStages or default to not_started
-  const [stageStatuses, setStageStatuses] = useState<Record<string, string>>(
+  const getInitialStatuses = () =>
     stages.reduce((acc, stage) => {
       const current = currentStages.find((s) => s.name.toLowerCase() === stage.id);
       acc[stage.id] = current?.status || "not_started";
       return acc;
-    }, {} as Record<string, string>)
-  );
+    }, {} as Record<string, string>);
+
+  const [stageStatuses, setStageStatuses] = useState<Record<string, string>>(getInitialStatuses);
+  const [loading, setLoading] = useState(false);
   const toast = useToast();
+
+  // Sync ulang saat dialog dibuka atau currentStages berubah
+  useEffect(() => {
+    if (open) {
+      setStageStatuses(getInitialStatuses());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, currentStages]);
 
   const handleStatusChange = (stageId: string, status: string) => {
     setStageStatuses((prev) => ({
@@ -70,22 +80,25 @@ export function UpdateTimelineDialog({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // TODO: API call to update production timeline
-    console.log({
-      orderId,
-      stages: Object.entries(stageStatuses).map(([stageId, status]) => ({
-        stage_name: stageId,
-        status,
-        // If status changes to in_progress → set actual_start
-        // If status changes to completed → set actual_end
-      })),
-    });
+    setLoading(true);
+    try {
+      await api.post(`/api/orders/${orderId}/timeline`, {
+        stages: Object.entries(stageStatuses).map(([stageId, status]) => ({
+          stageName: stageId,
+          status,
+        })),
+      });
 
-    onOpenChange(false);
-    toast.success(`Timeline ${orderNumber} berhasil diperbarui`);
+      onOpenChange(false);
+      toast.success(`Timeline ${orderNumber} berhasil diperbarui`);
+      window.location.reload();
+    } catch (err) {
+      toast.error(`Gagal: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -119,6 +132,7 @@ export function UpdateTimelineDialog({
                 <Select
                   value={stageStatuses[stage.id]}
                   onValueChange={(val) => handleStatusChange(stage.id, val || "not_started")}
+                  disabled={loading}
                 >
                   <SelectTrigger id={stage.id}>
                     <SelectValue />
@@ -139,11 +153,17 @@ export function UpdateTimelineDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Batal
             </Button>
-            <Button type="submit">
-              Update Timeline
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Menyimpan...
+                </span>
+              ) : "Update Timeline"}
             </Button>
           </DialogFooter>
         </form>
