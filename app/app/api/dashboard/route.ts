@@ -16,7 +16,14 @@ export async function GET() {
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-  const [thisMonthOrders, lastMonthOrders, allShippedOrders] = await Promise.all([
+  const [
+    thisMonthOrders,
+    lastMonthOrders,
+    allShippedOrders,
+    stockAgg,
+    lowStockFabrics,
+    activeOrders,
+  ] = await Promise.all([
     // Order shipped bulan ini
     prisma.order.findMany({
       where: { status: "shipped", orderDate: { gte: startOfMonth } },
@@ -40,6 +47,28 @@ export async function GET() {
       },
       include: { costing: true },
       orderBy: { orderDate: "asc" },
+    }),
+    // Stok total
+    prisma.fabricBatch.aggregate({
+      _sum: { qtyRemaining: true },
+    }),
+    // Low stock fabrics
+    prisma.fabric.findMany({
+      where: { isActive: true, colors: { some: { batches: { some: {} } } } },
+      include: {
+        colors: {
+          include: {
+            batches: { select: { qtyRemaining: true } },
+          },
+        },
+      },
+    }),
+    // Order aktif (deadline terdekat)
+    prisma.order.findMany({
+      where: { status: { in: ["draft", "in_production", "qc"] } },
+      orderBy: { deadline: "asc" },
+      take: 5,
+      select: { id: true, orderNumber: true, customerName: true, status: true, deadline: true },
     }),
   ]);
 
@@ -94,23 +123,9 @@ export async function GET() {
   }));
 
   // ── 3. Stok total ────────────────────────────────────────────────────────
-  const stockAgg = await prisma.fabricBatch.aggregate({
-    _sum: { qtyRemaining: true },
-  });
   const totalStock = stockAgg._sum.qtyRemaining ?? 0;
 
   // ── 4. Low stock fabrics ─────────────────────────────────────────────────
-  const lowStockFabrics = await prisma.fabric.findMany({
-    where: { isActive: true, colors: { some: { batches: { some: {} } } } },
-    include: {
-      colors: {
-        include: {
-          batches: { select: { qtyRemaining: true } },
-        },
-      },
-    },
-  });
-
   const lowStock = lowStockFabrics
     .map((f) => {
       const stock = f.colors.reduce(
@@ -121,20 +136,15 @@ export async function GET() {
     })
     .filter((f) => f.stock > 0 && f.stock <= f.reorderPoint);
 
-  // ── 5. Order aktif (deadline terdekat) ──────────────────────────────────
-  const activeOrders = await prisma.order.findMany({
-    where: { status: { in: ["draft", "in_production", "qc"] } },
-    orderBy: { deadline: "asc" },
-    take: 5,
-    select: { id: true, orderNumber: true, customerName: true, status: true, deadline: true },
-  });
-
-  return NextResponse.json({
-    summaries,
-    thisMonth,
-    lastMonth,
-    totalStock: Math.round(totalStock * 10) / 10,
-    lowStock,
-    activeOrders,
-  });
+  return NextResponse.json(
+    {
+      summaries,
+      thisMonth,
+      lastMonth,
+      totalStock: Math.round(totalStock * 10) / 10,
+      lowStock,
+      activeOrders,
+    },
+    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=300" } }
+  );
 }

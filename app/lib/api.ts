@@ -146,3 +146,35 @@ export interface ReportsData {
   orders: Order[];
   summaries: MonthlySummary[];
 }
+
+export interface ProductionReportOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  status: "draft" | "in_production" | "qc" | "shipped";
+  orderDate: string;
+  deadline: string | null;
+  revenue: number;
+  hpp: number;
+  profit: number;
+  profitMargin: number;
+  onTime: boolean | null;
+  stagesTotal: number;
+  stagesCompleted: number;
+}
+
+export interface ProductionReportData {
+  summary: {
+    totalOrders: number;
+    pipeline: Record<string, number>;
+    qcPending: number;
+    onTimeCount: number;
+    onTimeRate: number;
+    revenue: number;
+    hpp: number;
+    profit: number;
+    margin: number;
+  };
+  orders: ProductionReportOrder[];
+  topFabrics: { fabricId: string; name: string; kg: number; cost: number }[];
+}

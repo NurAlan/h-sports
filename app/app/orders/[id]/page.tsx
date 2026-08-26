@@ -209,23 +209,29 @@ export default function OrderDetailPage() {
 
   /**
    * Apakah tombol advance status boleh diklik?
+   * - Mulai Produksi (draft → in_production): BOM tidak boleh kosong
    * - Masuk QC (in_production → qc): semua stage produksi harus selesai
    * - Tandai Selesai (qc → shipped): stage QC harus selesai
-   * - Mulai Produksi (draft → in_production): bebas
    */
   const canAdvance = (() => {
     if (!nextAction) return false;
+    if (nextAction.next === "in_production") {
+      return bom.length > 0; // BOM harus terisi sebelum mulai produksi
+    }
     if (nextAction.next === "qc") {
       return allProductionDone;
     }
     if (nextAction.next === "shipped") {
       return qcDone;
     }
-    return true; // draft → in_production
+    return true;
   })();
 
   const advanceBlockReason = (() => {
     if (!nextAction || canAdvance) return null;
+    if (nextAction.next === "in_production") {
+      return "BOM masih kosong — tambah bahan dulu sebelum mulai produksi";
+    }
     if (nextAction.next === "qc") {
       const pending = productionStages.filter((s) => s.status !== "completed");
       if (productionStages.length === 0) return "Belum ada timeline produksi — isi dulu via tombol Update";
@@ -565,7 +571,13 @@ export default function OrderDetailPage() {
             <DollarSign className="h-4 w-4 text-primary" />
             Costing & Harga Jual
           </CardTitle>
-          <Button size="sm" className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm" onClick={() => setCostingOpen(true)}>
+          <Button 
+            size="sm" 
+            className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" 
+            onClick={() => setCostingOpen(true)}
+            disabled={bom.length === 0}
+            title={bom.length === 0 ? "Tambah bahan dulu untuk menghitung costing" : undefined}
+          >
             Hitung Ulang
           </Button>
         </CardHeader>
@@ -615,7 +627,14 @@ export default function OrderDetailPage() {
           ) : (
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground mb-2">Belum ada data costing</p>
-              <Button size="sm" onClick={() => setCostingOpen(true)}>Hitung Harga Jual</Button>
+              <Button 
+                size="sm" 
+                onClick={() => setCostingOpen(true)}
+                disabled={bom.length === 0}
+                title={bom.length === 0 ? "Tambah bahan dulu untuk menghitung costing" : undefined}
+              >
+                Hitung Harga Jual
+              </Button>
             </div>
           )}
         </CardContent>

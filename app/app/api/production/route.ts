@@ -10,18 +10,30 @@ export async function GET() {
   const orders = await prisma.order.findMany({
     where: { status: { in: ["in_production", "qc"] } },
     orderBy: [{ deadline: "asc" }, { orderDate: "desc" }],
-    include: {
+    select: {
+      id: true,
+      orderNumber: true,
+      customerName: true,
+      customerContact: true,
+      qtyItems: true,
+      specification: true,
+      status: true,
+      orderDate: true,
+      deadline: true,
+      createdAt: true,
+      updatedAt: true,
+      costing: { select: { sellingPrice: true, hpp: true, profit: true } },
       timelines: { orderBy: { createdAt: "asc" } },
       bomItems: {
         select: {
+          id: true,
           qtyActual: true,
           fabricColorId: true,
+          fabricId: true,
           fabricColor: {
-            select: {
-              colorName: true,
-              fabric: { select: { name: true } },
-            },
+            select: { colorName: true },
           },
+          fabric: { select: { name: true } },
         },
       },
     },
@@ -32,10 +44,13 @@ export async function GET() {
     ...order,
     bomItems: order.bomItems.map((b) => ({
       ...b,
-      fabricName: b.fabricColor.fabric.name,
-      colorName: b.fabricColor.colorName,
+      fabricName: b.fabric?.name ?? "",
+      colorName: b.fabricColor?.colorName ?? "",
     })),
   }));
 
-  return NextResponse.json(result);
+  return NextResponse.json(
+    result,
+    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=300" } }
+  );
 }

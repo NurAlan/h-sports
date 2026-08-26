@@ -14,13 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { FABRIC_CATALOG } from "@/lib/master-data";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/toast/toast-provider";
@@ -130,18 +124,14 @@ export function AddFabricPurchaseDialog({
                   </span>
                 </div>
               ) : (
-                <Select value={fabricId} onValueChange={(val) => setFabricId(val || "")} required>
-                  <SelectTrigger id="fabric">
-                    <SelectValue placeholder="Pilih kain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FABRIC_CATALOG.map((fabric) => (
-                      <SelectItem key={fabric.id} value={fabric.id}>
-                        {fabric.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  items={FABRIC_CATALOG}
+                  value={fabricId}
+                  onValueChange={(val) => setFabricId(val)}
+                  placeholder="Cari kain..."
+                  getItemValue={(f) => f.id}
+                  getItemLabel={(f) => f.name}
+                />
               )}
             </div>
 

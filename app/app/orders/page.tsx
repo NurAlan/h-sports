@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { FAB } from "@/components/fab";
 import { api, type Order } from "@/lib/api";
 import { OrderCardSkeleton } from "@/components/skeletons";
+import { DateRangeFilter } from "@/components/filters/date-range-filter";
+import { StatusFilter, ORDER_STATUS_OPTIONS } from "@/components/filters/status-filter";
 import {
   Package,
   FileText,
@@ -34,7 +36,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDate, daysUntil, daysLeftLabel, formatRupiah, profitColor } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 
 const statusConfig: Record<
   string,
@@ -76,16 +77,7 @@ const statusConfig: Record<
   },
 };
 
-// Filter options
-const filterOptions = [
-  { value: "all", label: "Semua" },
-  { value: "draft", label: "Draft" },
-  { value: "in_production", label: "Produksi" },
-  { value: "qc", label: "QC" },
-  { value: "shipped", label: "Selesai" },
-] as const;
-
-type FilterValue = (typeof filterOptions)[number]["value"];
+// Filter options reuse shared ORDER_STATUS_OPTIONS
 
 /** Warna card berdasarkan deadline:
  *  - Shipped/selesai : hijau
@@ -115,8 +107,10 @@ export default function OrdersPage() {
   const [orderList, setOrderList] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<FilterValue>("all");
+  const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [sortBy, setSortBy] = useState<
     "deadline_asc" | "deadline_desc" | "date_desc" | "date_asc"
   >("deadline_asc");
@@ -143,7 +137,17 @@ export default function OrdersPage() {
       result = result.filter((o) => o.status === filter);
     }
 
-    // 2. Filter by search (nama customer atau nomor order)
+    // 2. Filter by date range (orderDate)
+    if (startDate || endDate) {
+      result = result.filter((o) => {
+        const d = o.orderDate.slice(0, 10);
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+        return true;
+      });
+    }
+
+    // 3. Filter by search (nama customer atau nomor order)
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter(
@@ -153,7 +157,7 @@ export default function OrdersPage() {
       );
     }
 
-    // 3. Sorting
+    // 4. Sorting
     const sorted = [...result];
     switch (sortBy) {
       case "deadline_asc":
@@ -170,7 +174,7 @@ export default function OrdersPage() {
         break;
     }
     return sorted;
-  }, [filter, search, sortBy, orderList]);
+  }, [filter, startDate, endDate, search, sortBy, orderList]);
 
   // Count per status untuk badge filter
   const counts = useMemo(() => {
@@ -250,36 +254,33 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* 2. Filter status — di bawah search */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-3 -mx-4 px-4">
-        {filterOptions.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setFilter(opt.value)}
-            className={cn(
-              "flex items-center gap-1.5 shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors",
-              filter === opt.value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50"
-            )}
-          >
-            {opt.label}
-            <span
-              className={cn(
-                "text-[10px] font-bold rounded-full px-1.5 py-0.5",
-                filter === opt.value
-                  ? "bg-white/20 text-white"
-                  : "bg-gray-100 text-muted-foreground"
-              )}
-            >
-              {counts[opt.value] || 0}
-            </span>
-          </button>
-        ))}
+      {/* 2. Filter rentang tanggal — di atas status */}
+      <div className="mb-3">
+        <DateRangeFilter
+          compact
+          placeholder="Rentang Tanggal"
+          startDate={startDate}
+          endDate={endDate}
+          onStartChange={setStartDate}
+          onEndChange={setEndDate}
+          onClear={() => {
+            setStartDate("");
+            setEndDate("");
+          }}
+        />
       </div>
 
-      {/* 3. Result count */}
+      {/* 3. Filter status — di bawah tanggal */}
+      <div className="mb-3">
+        <StatusFilter
+          options={ORDER_STATUS_OPTIONS.map((o) => ({ ...o, count: counts[o.value] ?? 0 }))}
+          value={filter}
+          onChange={setFilter}
+          showCounts
+        />
+      </div>
+
+      {/* 4. Result count */}
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-muted-foreground">
           Menampilkan{" "}
@@ -288,12 +289,14 @@ export default function OrdersPage() {
           </span>{" "}
           dari {orderList.length} order
         </p>
-        {(search || filter !== "all") && (
+        {(search || filter !== "all" || startDate || endDate) && (
           <button
             type="button"
             onClick={() => {
               setSearch("");
               setFilter("all");
+              setStartDate("");
+              setEndDate("");
             }}
             className="text-xs font-medium text-primary hover:underline"
           >
@@ -442,7 +445,7 @@ export default function OrdersPage() {
             <DialogDescription>
               Order{" "}
               <span className="font-semibold text-foreground">
-                "{deleteTarget?.orderNumber}"
+                &quot;{deleteTarget?.orderNumber}&quot;
               </span>{" "}
               ({deleteTarget?.customerName}) akan dihapus secara permanen.
             </DialogDescription>

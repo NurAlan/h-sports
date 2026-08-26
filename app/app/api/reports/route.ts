@@ -47,9 +47,12 @@ export async function GET(request: Request) {
     take: 6,
   });
 
-  return NextResponse.json({
-    summary: { revenue: Math.round(revenue), hpp: Math.round(hpp), profit: Math.round(profit), margin, counted },
-    orders,
-    summaries,
-  });
+  return NextResponse.json(
+    {
+      summary: { revenue: Math.round(revenue), hpp: Math.round(hpp), profit: Math.round(profit), margin, counted },
+      orders,
+      summaries,
+    },
+    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=300" } }
+  );
 }

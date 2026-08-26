@@ -84,55 +84,51 @@ export function AddBOMItemDialog({
     }
   }, [open]);
 
-  // Fabric yang dipilih
-  const selectedFabric = useMemo(
-    () => inventory.find((f) => f.id === fabricId),
-    [inventory, fabricId]
-  );
+  // Warna tersedia dari fabric terpilih (hanya yang stok > 0)
+  const availableColors = useMemo(() => {
+    if (!fabricId) return [];
+    const fabric = inventory.find((f) => f.id === fabricId);
+    return fabric?.colors.filter((c) => c.stock > 0) ?? [];
+  }, [inventory, fabricId]);
 
-  // Warna yang tersedia untuk fabric terpilih (stok > 0)
-  const availableColors = useMemo(
-    () => selectedFabric?.colors.filter((c) => c.stock > 0) ?? [],
-    [selectedFabric]
-  );
+  // Warna terpilih
+  const selectedColor = useMemo(() => {
+    return availableColors.find((c) => c.colorId === colorId);
+  }, [availableColors, colorId]);
 
-  // Warna yang dipilih
-  const selectedColor = useMemo(
-    () => availableColors.find((c) => c.colorId === colorId),
-    [availableColors, colorId]
-  );
-
+  // Kalkulasi qty actual (qty required + waste%)
   const qtyRequiredNum = parseFloat(qtyRequired) || 0;
-  const wasteNum = parseFloat(wastePercentage) || 0;
-  const qtyActual = qtyRequiredNum * (1 + wasteNum / 100);
+  const wastePct = parseFloat(wastePercentage) || 0;
+  const qtyActual = qtyRequiredNum * (1 + wastePct / 100);
   const materialCost = qtyActual * (selectedColor?.avgPrice ?? 0);
-  const isStockEnough = (selectedColor?.stock ?? 0) >= qtyActual;
+  const isStockEnough = selectedColor ? selectedColor.stock >= qtyActual : false;
 
-  // Reset colorId saat fabric berubah
   const handleFabricChange = (val: string) => {
-    setFabricId(val || "");
-    setColorId("");
+    setFabricId(val);
+    setColorId(""); // reset warna saat ganti kain
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!fabricId || !colorId || qtyRequiredNum <= 0) return;
+
     setLoading(true);
     try {
       const created = await api.post<BomItem>(`/api/orders/${orderId}/bom`, {
-        fabricId,
         fabricColorId: colorId,
         qtyRequired: qtyRequiredNum,
-        wastePercentage: wasteNum,
+        wastePercentage: wastePct,
       });
+      toast.success(`Bahan ditambahkan ke order ${orderNumber}`);
+      onAdded?.(created);
+      onOpenChange(false);
+      // Reset form
       setFabricId("");
       setColorId("");
       setQtyRequired("");
       setWastePercentage("10");
-      onOpenChange(false);
-      toast.success(`Bahan ${selectedFabric?.name} — ${selectedColor?.colorName} ditambahkan ke BOM`);
-      onAdded?.(created);
     } catch (err) {
-      toast.error(`Gagal: ${(err as Error).message}`);
+      toast.error(`Gagal tambah bahan: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -140,18 +136,17 @@ export function AddBOMItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Tambah Bahan ke BOM</DialogTitle>
+          <DialogTitle>Tambah Bahan (BOM)</DialogTitle>
           <DialogDescription>
-            {orderNumber} — Pilih kain, warna, dan kebutuhan bersih
+            Order <b>{orderNumber}</b> — Pilih kain, warna, dan qty bersih.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <DialogBody>
           <div className="grid gap-4">
-
-            {/* Step 1 — Pilih Jenis Kain */}
+            {/* Step 1 — Pilih Kain */}
             <div className="grid gap-2">
               <Label>
                 <span className="inline-flex items-center gap-1.5">
@@ -159,26 +154,16 @@ export function AddBOMItemDialog({
                   Jenis Kain *
                 </span>
               </Label>
-              <Select
-                value={fabricId}
-                onValueChange={handleFabricChange}
-                disabled={stockLoading}
-              >
+              <Select value={fabricId} onValueChange={handleFabricChange} disabled={stockLoading}>
                 <SelectTrigger>
-                  <SelectValue placeholder={stockLoading ? "Memuat stok..." : "Pilih jenis kain"} />
+                  <SelectValue placeholder={stockLoading ? "Memuat stok..." : "Pilih kain..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {inventory.length === 0 && !stockLoading ? (
-                    <p className="px-3 py-4 text-xs text-muted-foreground text-center">
-                      Semua stok habis — tambah stok dulu
-                    </p>
-                  ) : (
-                    inventory.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.name} ({f.totalStock} kg total)
-                      </SelectItem>
-                    ))
-                  )}
+                  {inventory.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name} ({f.totalStock} kg total)
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -192,25 +177,16 @@ export function AddBOMItemDialog({
                     Warna *
                   </span>
                 </Label>
-                <Select
-                  value={colorId}
-                  onValueChange={(val) => setColorId(val || "")}
-                >
+                <Select value={colorId} onValueChange={(val) => setColorId(val)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih warna" />
+                    <SelectValue placeholder="Pilih warna..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableColors.length === 0 ? (
-                      <p className="px-3 py-4 text-xs text-muted-foreground text-center">
-                        Semua warna stok habis
-                      </p>
-                    ) : (
-                      availableColors.map((c) => (
-                        <SelectItem key={c.colorId} value={c.colorId}>
-                          {c.colorName} ({c.stock} kg · {formatRupiah(c.avgPrice)}/kg)
-                        </SelectItem>
-                      ))
-                    )}
+                    {availableColors.map((c) => (
+                      <SelectItem key={c.colorId} value={c.colorId}>
+                        {c.colorName} ({c.stock} kg · {formatRupiah(c.avgPrice)}/kg)
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 

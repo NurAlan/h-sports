@@ -37,6 +37,13 @@ const menuItems = [
     href: "/reports",
     color: "bg-green-100 text-green-600",
   },
+  {
+    icon: BarChart3,
+    label: "Laporan Produksi",
+    subtitle: "Pipeline, on-time, omzet & profit produksi",
+    href: "/reports/produksi",
+    color: "bg-amber-100 text-amber-600",
+  },
 ];
 
 export default function ProfilePage() {

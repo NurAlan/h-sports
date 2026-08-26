@@ -2,5 +2,9 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "installCommand": "npm install",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "functions": {
+    "app/**/*.{ts,tsx,js,jsx}": { "regions": ["hnd1"] },
+    "middleware": { "regions": ["hnd1"] }
+  }
 }

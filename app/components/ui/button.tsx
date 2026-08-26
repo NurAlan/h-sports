@@ -41,17 +41,21 @@ function Button({
   variant = "default",
   size = "default",
   type = "button",
+  asChild = false,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants>) {
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }) {
+  const Comp = asChild ? "span" : "button";
   return (
-    <button
+    <Comp
       data-slot="button"
-      type={type}
+      type={asChild ? undefined : type}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
-  )
+  );
 }
 
 export { Button, buttonVariants }

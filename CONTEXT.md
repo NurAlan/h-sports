@@ -68,6 +68,52 @@ Kondisi saat `stock > 0` dan `stock ≤ reorderPoint`. Kain dengan stok 0 (belum
 
 ---
 
+## Laporan
+
+**Laporan**
+Tampilan agregat lintas periode (bulanan / rentang tanggal) untuk pengambilan keputusan. Berbeda dari layar operasional real-time (detail Order, Timeline). Sumber data: `Order` + `OrderCosting` + `ProductionTimeline`, dihitung real-time via Prisma (bukan `MonthlySummary`).
+
+**Laporan Produksi**
+Sub-jenis laporan yang memaparkan `pipeline` order per status, `on-time rate`, `antrian QC`, serta `omzet` & `profit` produksi dalam rentang tanggal. Berbeda dari `/production` (Timeline produksi real-time). Route terpisah: `/reports/produksi`.
+
+**On-time**
+Order dianggap on-time bila `status = shipped` DAN `actualEnd ≤ deadline`. `actualEnd` = nilai `actualEnd` terbesar antar stage di `ProductionTimeline`. Bila belum `shipped`, on-time = `null` (tidak dihitung ke dalam rate).
+
+**Pipeline**
+Distribusi order per `status` (`draft` / `in_production` / `qc` / `shipped`) dalam rentang tanggal laporan.
+
+**Antrian QC**
+Jumlah order berstatus `qc` (menunggu masuk QC) dalam rentang tanggal laporan.
+
+**Date-range filter**
+Semua metrik laporan difilter oleh `orderDate` antara `start` dan `end` (param `?start=&end=` di API laporan).
+
+---
+
+## Laporan
+
+**Reports Hub**
+Pintu masuk tunggal semua laporan di `/reports`, dengan sub-navigasi tab:
+**Keuangan** | **Produksi** | **Customer**. Tab switch tanpa reload; filter
+periode (`PeriodFilter`) dibagikan ke semua tab.
+
+**Laporan Keuangan** (tab "Keuangan")
+Agregat profit: KPI (Omzet/HPP/Profit/Margin) dengan sparkline + delta vs periode
+lalu, tren Profit & Margin (6 bulan), dan tabel detail order. Order dengan
+`profit < 0` ditandai baris merah (rugi). Tidak memuat card "Top Customer" maupun
+"Kain Terbanyak Dipakai" — keduanya dipindah ke tab lain.
+
+**Laporan Produksi** (tab "Produksi", route `/reports/produksi`)
+Pipeline, on-time, progres stage, serta **Kain Terbanyak Dipakai** (agregat
+`BomItem` per `fabricId` dalam rentang tanggal). Lihat juga entri Laporan Produksi
+di bawah.
+
+**Laporan Customer** (tab "Customer")
+Breakdown customer berdasarkan profit: share %, jumlah order, dan total profit
+(diurut profit tertinggi).
+
+---
+
 ## Istilah yang Dihindari
 
 - ❌ "sold" → gunakan `shipped`

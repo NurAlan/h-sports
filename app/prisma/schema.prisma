@@ -16,8 +16,10 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // directUrl dipakai untuk migration dari lokal — comment out jika tidak bisa reach
-  // directUrl = env("DIRECT_URL")
+  // directUrl dipakai Prisma CLI (db push / migrate / studio) — harus koneksi
+  // direct (session pooler port 5432), bukan transaction pooler (6543) yg
+  // tidak didukung untuk DDL. Runtime app tetap pakai DATABASE_URL (6543).
+  directUrl = env("DIRECT_URL")
 }
 
 // === 0. PROFIL USER (terhubung ke auth.users Supabase) ===
@@ -111,6 +113,8 @@ model Order {
   costing   OrderCosting?
 
   @@index([status])
+  @@index([orderDate])
+  @@index([status, orderDate])
   @@map("orders")
 }
 
@@ -133,6 +137,7 @@ model BomItem {
 
   @@unique([orderId, fabricColorId]) // 1 warna hanya 1x per order
   @@index([orderId])
+  @@index([fabricId])
   @@map("bom_items")
 }
 
