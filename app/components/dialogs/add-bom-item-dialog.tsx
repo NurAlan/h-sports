@@ -33,7 +33,7 @@ interface AddBOMItemDialogProps {
   onAdded?: (item: BomItem) => void;
 }
 
-// Tipe data inventory per FabricColor (setelah API diupdate)
+// Tipe data inventory per FabricColor (dari /api/inventory)
 interface InventoryColor {
   colorId: string;
   colorName: string;
@@ -64,50 +64,17 @@ export function AddBOMItemDialog({
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  // Mock inventory dengan warna — akan diganti API setelah backend siap
-  const MOCK_INVENTORY: InventoryFabric[] = [
-    {
-      id: "fabric-cotton-combed-30",
-      name: "Cotton Combed 30s",
-      totalStock: 42.5,
-      colors: [
-        { colorId: "color-1", colorName: "Putih", stock: 20, avgPrice: 52000 },
-        { colorId: "color-2", colorName: "Hitam", stock: 15, avgPrice: 51000 },
-        { colorId: "color-3", colorName: "Merah", stock: 7.5, avgPrice: 53000 },
-      ],
-    },
-    {
-      id: "fabric-cotton-combed-24",
-      name: "Cotton Combed 24s",
-      totalStock: 3.2,
-      colors: [
-        { colorId: "color-4", colorName: "Putih", stock: 3.2, avgPrice: 48000 },
-      ],
-    },
-    {
-      id: "fabric-cotton-bamboo",
-      name: "Cotton Bamboo",
-      totalStock: 18,
-      colors: [
-        { colorId: "color-5", colorName: "Abu-abu", stock: 10, avgPrice: 65000 },
-        { colorId: "color-6", colorName: "Navy", stock: 8, avgPrice: 66000 },
-      ],
-    },
-  ];
-
-  // Fetch inventory saat dialog dibuka
+  // Fetch inventory saat dialog dibuka — API real (stok per FabricColor)
   useEffect(() => {
     if (open) {
       setStockLoading(true);
-      // TODO: ganti dengan API call setelah backend diupdate
-      // api.get<InventoryFabric[]>("/api/inventory")
-      //   .then(setInventory)
-      //   .catch(() => setInventory([]))
-      //   .finally(() => setStockLoading(false));
-      setTimeout(() => {
-        setInventory(MOCK_INVENTORY.filter((f) => f.totalStock > 0));
-        setStockLoading(false);
-      }, 300);
+      api
+        .get<InventoryFabric[]>("/api/inventory")
+        .then((data) => {
+          setInventory(data.filter((f) => f.totalStock > 0));
+        })
+        .catch(() => setInventory([]))
+        .finally(() => setStockLoading(false));
     } else {
       // Reset saat dialog ditutup
       setFabricId("");
@@ -115,7 +82,6 @@ export function AddBOMItemDialog({
       setQtyRequired("");
       setWastePercentage("10");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Fabric yang dipilih

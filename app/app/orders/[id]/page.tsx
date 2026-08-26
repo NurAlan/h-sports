@@ -73,7 +73,9 @@ export default function OrderDetailPage() {
     bomItems?: Array<{
       id: string;
       fabricId: string;
+      fabricColorId: string;
       fabricName: string;
+      colorName: string;
       qtyRequired: number;
       wastePct: number;
       qtyActual: number;
@@ -103,14 +105,18 @@ export default function OrderDetailPage() {
   const [stockMap, setStockMap] = useState<Record<string, number>>({});
   const [stockLoading, setStockLoading] = useState(false);
 
-  /** Lazy load stok — hanya fetch saat dibutuhkan */
+  /** Lazy load stok — key = fabricColorId (stok per warna) */
   const loadStockIfNeeded = async () => {
     if (Object.keys(stockMap).length > 0) return;
     setStockLoading(true);
     try {
-      const invData = await api.get<{ id: string; stock: number }[]>("/api/inventory");
+      const invData = await api.get<{ colors: { colorId: string; stock: number }[] }[]>("/api/inventory");
       const map: Record<string, number> = {};
-      for (const it of invData) map[it.id] = it.stock;
+      for (const fabric of invData) {
+        for (const c of fabric.colors ?? []) {
+          map[c.colorId] = c.stock;
+        }
+      }
       setStockMap(map);
     } catch { /* gagal fetch stok — shortages kosong */ }
     finally { setStockLoading(false); }
@@ -149,14 +155,14 @@ export default function OrderDetailPage() {
   // Data BOM (null-safe saat loading) — hook HARUS sebelum early return
   const bom = order?.bomItems ?? [];
 
-  // Cek stok cukup untuk semua BOM (validasi SEBELUM mulai produksi)
+  // Cek stok cukup untuk semua BOM (validasi SEBELUM mulai produksi) — per FabricColor
   const shortages = useMemo(() => {
     const list: { fabricName: string; needed: number; available: number }[] = [];
     for (const item of bom) {
-      const available = stockMap[item.fabricId] ?? 0;
+      const available = stockMap[item.fabricColorId] ?? 0;
       if (available < item.qtyActual) {
         list.push({
-          fabricName: item.fabricName,
+          fabricName: `${item.fabricName} — ${item.colorName}`,
           needed: Math.round(item.qtyActual * 10) / 10,
           available: Math.round(available * 10) / 10,
         });
@@ -499,7 +505,7 @@ export default function OrderDetailPage() {
                     </span>
                   )}
                   <p className={`text-sm font-semibold truncate ${isShort ? "text-red-700" : "text-foreground"}`}>
-                    {item.fabricName}
+                    {item.fabricName} — {item.colorName}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

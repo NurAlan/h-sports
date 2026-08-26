@@ -89,7 +89,9 @@ export interface BomItem {
   id: string;
   orderId: string;
   fabricId: string;
+  fabricColorId: string;
   fabricName: string;
+  colorName: string;
   qtyRequired: number;
   wastePct: number;
   qtyActual: number;
