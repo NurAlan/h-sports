@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
-import { allocateFabricFIFO } from "@/lib/fifo";
+import { allocateBOMFIFO } from "@/lib/fifo";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -49,13 +49,11 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
   }
 
-  // FIFO deduction saat order masuk produksi (hanya sekali — dari draft/in_production)
+  // FIFO deduction saat order masuk produksi (hanya sekali — dari draft)
   if (status === "in_production" && order.status === "draft") {
     try {
       await prisma.$transaction(async (tx) => {
-        for (const bom of order.bomItems) {
-          await allocateFabricFIFO(tx, bom.fabricId, bom.qtyActual, order.id);
-        }
+        await allocateBOMFIFO(tx, id);
       });
     } catch (e) {
       return NextResponse.json(

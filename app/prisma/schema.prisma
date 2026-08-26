@@ -2,6 +2,11 @@
 // H-Sport — Prisma Schema (PostgreSQL via Supabase)
 // Source of truth untuk tabel BISNIS + profiles.
 // Supabase Auth tetap menangani auth.users (di luar schema ini).
+//
+// CHANGELOG:
+// v2 — Tambah FabricColor antara Fabric dan FabricBatch (ADR-0001)
+//      BomItem.fabricColorId (sebelumnya fabricId)
+//      FIFO beroperasi per FabricColor
 // ============================================================
 
 generator client {
@@ -11,7 +16,8 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // directUrl dipakai untuk migration dari lokal — comment out jika tidak bisa reach
+  // directUrl = env("DIRECT_URL")
 }
 
 // === 0. PROFIL USER (terhubung ke auth.users Supabase) ===
@@ -31,39 +37,61 @@ model Profile {
 
 // === 1. MASTER KAIN ===
 model Fabric {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
-  unit         String  @default("kg")
-  reorderPoint Float   @default(5) @map("reorder_point")
-  isActive     Boolean @default(true) @map("is_active")
+  unit         String   @default("kg")
+  reorderPoint Float    @default(5) @map("reorder_point")
+  isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  batches  FabricBatch[]
+  // Relasi ke warna — stok/BOM beroperasi per FabricColor
+  colors   FabricColor[]
+  // BomItem tidak langsung ke Fabric — via FabricColor
   bomItems BomItem[]
 
   @@map("fabrics")
 }
 
-// === 2. PEMBELIAN KAIN PER BATCH (FIFO) ===
-model FabricBatch {
-  id            String   @id @default(cuid())
-  fabricId      String   @map("fabric_id")
-  supplierName  String   @map("supplier_name")
-  purchaseDate  DateTime @map("purchase_date") @db.Date
-  qtyPurchased  Float    @map("qty_purchased")
-  qtyRemaining  Float    @map("qty_remaining")
-  pricePerKg    Float    @map("price_per_kg")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+// === 2. WARNA KAIN (ADR-0001) ===
+// Satu Fabric punya banyak FabricColor.
+// Warna lahir dari pembelian pertama — tidak ada master warna terpisah.
+// colorName = text bebas (input user).
+model FabricColor {
+  id        String   @id @default(cuid())
+  fabricId  String   @map("fabric_id")
+  colorName String   @map("color_name")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  fabric Fabric      @relation(fields: [fabricId], references: [id], onDelete: Cascade)
-  usages BatchUsage[]
+  fabric   Fabric        @relation(fields: [fabricId], references: [id], onDelete: Cascade)
+  batches  FabricBatch[]
+  bomItems BomItem[]
 
+  @@unique([fabricId, colorName]) // satu kain tidak bisa punya warna duplikat
   @@index([fabricId])
+  @@map("fabric_colors")
+}
+
+// === 3. PEMBELIAN KAIN PER BATCH (FIFO per FabricColor) ===
+model FabricBatch {
+  id             String   @id @default(cuid())
+  fabricColorId  String   @map("fabric_color_id") // FK ke FabricColor (bukan Fabric langsung)
+  supplierName   String   @map("supplier_name")
+  purchaseDate   DateTime @map("purchase_date") @db.Date
+  qtyPurchased   Float    @map("qty_purchased")
+  qtyRemaining   Float    @map("qty_remaining")
+  pricePerKg     Float    @map("price_per_kg")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  fabricColor FabricColor @relation(fields: [fabricColorId], references: [id], onDelete: Cascade)
+  usages      BatchUsage[]
+
+  @@index([fabricColorId])
   @@map("fabric_batches")
 }
 
-// === 3. ORDER ===
+// === 4. ORDER ===
 model Order {
   id              String   @id @default(cuid())
   orderNumber     String   @unique @map("order_number")
@@ -72,8 +100,9 @@ model Order {
   qtyItems        Int      @map("qty_items")
   specification   String?
   status          String   @default("draft")
+  // Status flow: draft → in_production → qc → shipped
   orderDate       DateTime @map("order_date") @db.Date
-  deadline        DateTime? @db.Date
+  deadline        DateTime? @map("deadline") @db.Date
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -81,40 +110,42 @@ model Order {
   timelines ProductionTimeline[]
   costing   OrderCosting?
 
+  @@index([status])
   @@map("orders")
 }
 
-// === 4. BOM (KOMPOSISI BAHAN PER ORDER) ===
+// === 5. BOM — KOMPOSISI BAHAN PER ORDER (per FabricColor) ===
 model BomItem {
-  id             String   @id @default(cuid())
-  orderId        String   @map("order_id")
-  fabricId       String   @map("fabric_id")
-  fabricName     String   @map("fabric_name")
-  qtyRequired    Float    @map("qty_required")
-  wastePct       Float    @default(0) @map("waste_percentage")
-  qtyActual      Float    @map("qty_actual")
-  pricePerKg     Float    @map("price_per_kg")
-  materialCost   Float    @map("material_cost")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id            String @id @default(cuid())
+  orderId       String @map("order_id")
+  fabricColorId String @map("fabric_color_id") // FK ke FabricColor (ADR-0001)
+  fabricId      String @map("fabric_id")        // denormalized untuk display name
+  qtyRequired   Float  @map("qty_required")
+  wastePct      Float  @default(0) @map("waste_pct")
+  qtyActual     Float  @map("qty_actual")       // = qty_required * (1 + waste_pct/100)
+  pricePerKg    Float  @map("price_per_kg")     // snapshot harga saat BOM dibuat
+  materialCost  Float  @map("material_cost")    // = qty_actual * price_per_kg
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  fabric Fabric @relation(fields: [fabricId], references: [id])
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fabricColor FabricColor @relation(fields: [fabricColorId], references: [id])
+  fabric      Fabric      @relation(fields: [fabricId], references: [id])
 
+  @@unique([orderId, fabricColorId]) // 1 warna hanya 1x per order
   @@index([orderId])
-  @@index([fabricId])
   @@map("bom_items")
 }
 
-// === 5. TIMELINE PRODUKSI ===
+// === 6. TIMELINE PRODUKSI ===
 model ProductionTimeline {
-  id           String   @id @default(cuid())
-  orderId      String   @map("order_id")
-  stageName    String   @map("stage_name")
-  status       String   @default("not_started")
-  estimatedHrs Float?   @map("estimated_hrs")
+  id           String    @id @default(cuid())
+  orderId      String    @map("order_id")
+  stageName    String    @map("stage_name")
+  status       String    @default("not_started")
+  estimatedHrs Float?    @map("estimated_hrs")
   actualStart  DateTime? @map("actual_start") @db.Timestamptz(6)
   actualEnd    DateTime? @map("actual_end") @db.Timestamptz(6)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -122,28 +153,29 @@ model ProductionTimeline {
   @@map("production_timelines")
 }
 
-// === 6. COSTING PER ORDER ===
+// === 7. COSTING PER ORDER ===
 model OrderCosting {
-  id            String  @id @default(cuid())
-  orderId       String  @unique @map("order_id")
-  materialCost  Float   @map("material_cost")
-  laborCost     Float   @map("labor_cost")
-  hpp           Float
-  pricingMethod String  @default("markup") @map("pricing_method")
-  markupPct     Float?  @map("markup_pct")
-  fixedProfit   Float?  @default(0) @map("fixed_profit")
-  sellingPrice  Float   @map("selling_price")
-  shippingCost  Float   @default(0) @map("shipping_cost")
+  id            String   @id @default(cuid())
+  orderId       String   @unique @map("order_id")
+  materialCost  Float    @map("material_cost")
+  laborCost     Float    @default(0) @map("labor_cost")
+  shippingCost  Float    @default(0) @map("shipping_cost")
+  hpp           Float    // material + labor
+  pricingMethod String   @map("pricing_method") // "markup" | "fixed_profit"
+  markupPct     Float?   @map("markup_pct")
+  fixedProfit   Float    @default(0) @map("fixed_profit")
+  sellingPrice  Float    @map("selling_price")
   profit        Float
-  profitMargin  Float   @map("profit_margin")
+  profitMargin  Float    @map("profit_margin")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_costing")
 }
 
-// === 7. PEMAKAIAN STOK PER BATCH (FIFO deduction) ===
+// === 8. PEMAKAIAN BATCH (FIFO log per FabricColor) ===
 model BatchUsage {
   id        String   @id @default(cuid())
   batchId   String   @map("batch_id")
@@ -158,16 +190,16 @@ model BatchUsage {
   @@map("batch_usage")
 }
 
-// === 8. RINGKASAN BULANAN (precompute untuk dashboard/laporan) ===
+// === 9. RINGKASAN BULANAN (precompute — tidak dipakai dashboard real-time) ===
 model MonthlySummary {
-  id          String   @id @default(cuid())
-  month       String   @unique // "2026-08"
-  totalOrders Int      @map("total_orders")
-  totalRevenue Float   @map("total_revenue")
-  totalHpp    Float    @map("total_hpp")
-  totalProfit Float    @map("total_profit")
-  avgMargin   Float    @map("avg_margin")
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           String   @id @default(cuid())
+  month        String   @unique // "2026-08"
+  totalOrders  Int      @map("total_orders")
+  totalRevenue Float    @map("total_revenue")
+  totalHpp     Float    @map("total_hpp")
+  totalProfit  Float    @map("total_profit")
+  avgMargin    Float    @map("avg_margin")
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("monthly_summaries")
 }

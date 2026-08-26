@@ -101,13 +101,22 @@ export async function GET() {
 
   // ── 4. Low stock fabrics ─────────────────────────────────────────────────
   const lowStockFabrics = await prisma.fabric.findMany({
-    where: { isActive: true, batches: { some: {} } },
-    include: { batches: { select: { qtyRemaining: true, pricePerKg: true } } },
+    where: { isActive: true, colors: { some: { batches: { some: {} } } } },
+    include: {
+      colors: {
+        include: {
+          batches: { select: { qtyRemaining: true } },
+        },
+      },
+    },
   });
 
   const lowStock = lowStockFabrics
     .map((f) => {
-      const stock = f.batches.reduce((s, b) => s + b.qtyRemaining, 0);
+      const stock = f.colors.reduce(
+        (s, c) => s + c.batches.reduce((bs, b) => bs + b.qtyRemaining, 0),
+        0
+      );
       return { id: f.id, name: f.name, stock, reorderPoint: f.reorderPoint };
     })
     .filter((f) => f.stock > 0 && f.stock <= f.reorderPoint);

@@ -28,11 +28,13 @@ import { useToast } from "@/components/toast/toast-provider";
 interface AddFabricPurchaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Prefill jenis kain (dipakai dari detail inventory) */
+  /** Prefill jenis kain (dari detail inventory) */
   initialFabricId?: string;
-  /** Prefill harga per kg (auto dari data inventory) */
+  /** Prefill warna (dari detail inventory — warna yang sedang dipilih) */
+  initialColorName?: string;
+  /** Prefill harga per kg (avg price warna tersebut) */
   initialPricePerKg?: number;
-  /** Prefill supplier (auto dari batch terakhir) */
+  /** Prefill supplier (dari batch terakhir) */
   initialSupplierName?: string;
 }
 
@@ -40,12 +42,14 @@ export function AddFabricPurchaseDialog({
   open,
   onOpenChange,
   initialFabricId,
+  initialColorName,
   initialPricePerKg,
   initialSupplierName,
 }: AddFabricPurchaseDialogProps) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [fabricId, setFabricId] = useState(initialFabricId ?? "");
+  const [colorName, setColorName] = useState(initialColorName ?? "");
   const [supplierName, setSupplierName] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -55,37 +59,43 @@ export function AddFabricPurchaseDialog({
     initialPricePerKg ? String(initialPricePerKg) : ""
   );
 
-  // Auto-fill saat dialog dibuka — field terisi dari data inventory
+  // Auto-fill saat dialog dibuka
   useEffect(() => {
     if (open) {
       if (initialFabricId) setFabricId(initialFabricId);
+      if (initialColorName) setColorName(initialColorName);
       if (initialPricePerKg) setPricePerKg(String(initialPricePerKg));
       if (initialSupplierName) setSupplierName(initialSupplierName);
       setPurchaseDate(new Date().toISOString().split("T")[0]);
     }
-  }, [open, initialFabricId, initialPricePerKg, initialSupplierName]);
+  }, [open, initialFabricId, initialColorName, initialPricePerKg, initialSupplierName]);
 
   const selectedFabric = FABRIC_CATALOG.find((f) => f.id === fabricId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!colorName.trim()) {
+      toast.error("Nama warna wajib diisi");
+      return;
+    }
     setLoading(true);
     try {
       await api.post("/api/fabric-batches", {
         fabricId,
+        colorName: colorName.trim(),
         supplierName,
         purchaseDate,
         qtyPurchased: parseFloat(quantity),
         pricePerKg: parseFloat(pricePerKg),
       });
 
-      // Reset form
       setQuantity("");
       if (!initialFabricId) setFabricId("");
+      if (!initialColorName) setColorName("");
       if (!initialSupplierName) setSupplierName("");
 
       onOpenChange(false);
-      toast.success(`Pembelian ${selectedFabric?.name ?? "kain"} berhasil ditambahkan`);
+      toast.success(`Pembelian ${selectedFabric?.name ?? "kain"} — ${colorName} berhasil ditambahkan`);
       window.location.reload();
     } catch (err) {
       toast.error(`Gagal: ${(err as Error).message}`);
@@ -106,7 +116,8 @@ export function AddFabricPurchaseDialog({
         <form onSubmit={handleSubmit}>
           <DialogBody>
           <div className="grid gap-4">
-            {/* Fabric Selection — lock jika prefill dari detail inventory */}
+
+            {/* Fabric Selection */}
             <div className="grid gap-2">
               <Label htmlFor="fabric">Jenis Kain *</Label>
               {initialFabricId && selectedFabric ? (
@@ -134,7 +145,35 @@ export function AddFabricPurchaseDialog({
               )}
             </div>
 
-            {/* Supplier Name */}
+            {/* Warna — text bebas, warna lahir dari pembelian pertama */}
+            <div className="grid gap-2">
+              <Label htmlFor="color">Warna *</Label>
+              {initialColorName ? (
+                <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
+                  <span className="text-sm font-medium text-foreground">
+                    {initialColorName}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Auto dari detail kain
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    id="color"
+                    placeholder="Contoh: Putih, Hitam, Navy, Merah Marun..."
+                    value={colorName}
+                    onChange={(e) => setColorName(e.target.value)}
+                    required
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Warna baru akan otomatis terdaftar untuk kain ini
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Supplier */}
             <div className="grid gap-2">
               <Label htmlFor="supplier">Nama Supplier</Label>
               <Input
@@ -145,7 +184,7 @@ export function AddFabricPurchaseDialog({
               />
             </div>
 
-            {/* Purchase Date */}
+            {/* Tanggal */}
             <div className="grid gap-2">
               <Label htmlFor="date">Tanggal Beli *</Label>
               <Input
@@ -157,7 +196,7 @@ export function AddFabricPurchaseDialog({
               />
             </div>
 
-            {/* Quantity */}
+            {/* Qty */}
             <div className="grid gap-2">
               <Label htmlFor="qty">Jumlah (kg) *</Label>
               <Input
@@ -172,7 +211,7 @@ export function AddFabricPurchaseDialog({
               />
             </div>
 
-            {/* Price per kg */}
+            {/* Harga */}
             <div className="grid gap-2">
               <Label htmlFor="price">Harga per kg (Rp) *</Label>
               <CurrencyInput
@@ -194,7 +233,7 @@ export function AddFabricPurchaseDialog({
             >
               Batal
             </Button>
-            <Button type="submit" disabled={!fabricId || !quantity || !pricePerKg || loading}>
+            <Button type="submit" disabled={!fabricId || !colorName.trim() || !quantity || !pricePerKg || loading}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

@@ -7,16 +7,19 @@
 ## Entitas Inti
 
 **Fabric** (Kain)
-Master data jenis kain. Contoh: "Cotton Combed 30s". Setiap Fabric punya `reorderPoint` sebagai ambang batas stok menipis. Fabric yang sudah memiliki batch pembelian tidak bisa dihapus.
+Master data jenis kain. Contoh: "Cotton Combed 30s". Setiap Fabric punya `reorderPoint` sebagai ambang batas stok menipis. Fabric yang sudah memiliki FabricColor tidak bisa dihapus.
+
+**FabricColor** (Warna Kain)
+Warna spesifik dari satu Fabric. Contoh: Cotton Combed 30s → Putih, Hitam, Merah. Warna lahir dari pembelian pertama — tidak ada master warna terpisah. Stok, FIFO, dan BOM beroperasi pada level FabricColor, bukan Fabric. `colorName` adalah text bebas.
 
 **FabricBatch** (Batch Pembelian)
-Satu transaksi pembelian kain. Setiap batch menyimpan `qtyPurchased`, `qtyRemaining`, `pricePerKg`, dan `purchaseDate`. Sistem FIFO mengalokasikan dari batch tertua.
+Satu transaksi pembelian kain per warna. FK ke `fabricColorId`. Setiap batch menyimpan `qtyPurchased`, `qtyRemaining`, `pricePerKg`, dan `purchaseDate`. Sistem FIFO mengalokasikan dari batch tertua per FabricColor.
 
 **Order**
 Pesanan kaos dari customer. Status lifecycle: `draft` → `in_production` → `qc` → `shipped`. Order tanpa status `shipped` tidak masuk laporan profit.
 
 **BOM** / **BomItem** (Bill of Materials / Komposisi Bahan)
-Daftar kain yang dibutuhkan untuk satu Order. Setiap item menyimpan `qtyRequired` (kebutuhan bersih), `wastePct` (persentase sisa potongan), dan `qtyActual = qtyRequired × (1 + wastePct/100)`. Stok dikurangi sebesar `qtyActual`, bukan `qtyRequired`.
+Daftar warna kain yang dibutuhkan untuk satu Order. Setiap item menyimpan `fabricColorId`, `qtyRequired`, `wastePct`, dan `qtyActual = qtyRequired × (1 + wastePct/100)`. Display di UI: `{fabricName} — {colorName}`. Stok dikurangi sebesar `qtyActual`, bukan `qtyRequired`.
 
 **ProductionTimeline** (Timeline Produksi)
 5 stage produksi per Order: `pengukuran`, `pemotongan`, `jahit`, `finishing`, `qc`. Status per stage: `not_started` → `in_progress` → `completed`. Syarat maju ke QC: semua stage non-QC `completed`. Syarat Selesai: stage QC `completed`.

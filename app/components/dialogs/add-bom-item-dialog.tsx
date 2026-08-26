@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/toast/toast-provider";
-import { FABRIC_CATALOG, getFabricCatalogById } from "@/lib/master-data";
+import { FABRIC_CATALOG } from "@/lib/master-data";
 import { api, type BomItem } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
 
@@ -30,8 +30,22 @@ interface AddBOMItemDialogProps {
   onOpenChange: (open: boolean) => void;
   orderId: string;
   orderNumber: string;
-  /** Dipanggil setelah bahan berhasil ditambah — data langsung tampil tanpa reload */
   onAdded?: (item: BomItem) => void;
+}
+
+// Tipe data inventory per FabricColor (setelah API diupdate)
+interface InventoryColor {
+  colorId: string;
+  colorName: string;
+  stock: number;
+  avgPrice: number;
+}
+
+interface InventoryFabric {
+  id: string;
+  name: string;
+  totalStock: number;
+  colors: InventoryColor[];
 }
 
 export function AddBOMItemDialog({
@@ -42,50 +56,97 @@ export function AddBOMItemDialog({
   onAdded,
 }: AddBOMItemDialogProps) {
   const [fabricId, setFabricId] = useState("");
+  const [colorId, setColorId] = useState("");
   const [qtyRequired, setQtyRequired] = useState("");
   const [wastePercentage, setWastePercentage] = useState("10");
-  const [stockMap, setStockMap] = useState<
-    Record<string, { stock: number; avgPrice: number }>
-  >({});
+  const [inventory, setInventory] = useState<InventoryFabric[]>([]);
   const [stockLoading, setStockLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
-  // Fetch stok REAL dari API saat dialog dibuka (bukan mock)
+  // Mock inventory dengan warna — akan diganti API setelah backend siap
+  const MOCK_INVENTORY: InventoryFabric[] = [
+    {
+      id: "fabric-cotton-combed-30",
+      name: "Cotton Combed 30s",
+      totalStock: 42.5,
+      colors: [
+        { colorId: "color-1", colorName: "Putih", stock: 20, avgPrice: 52000 },
+        { colorId: "color-2", colorName: "Hitam", stock: 15, avgPrice: 51000 },
+        { colorId: "color-3", colorName: "Merah", stock: 7.5, avgPrice: 53000 },
+      ],
+    },
+    {
+      id: "fabric-cotton-combed-24",
+      name: "Cotton Combed 24s",
+      totalStock: 3.2,
+      colors: [
+        { colorId: "color-4", colorName: "Putih", stock: 3.2, avgPrice: 48000 },
+      ],
+    },
+    {
+      id: "fabric-cotton-bamboo",
+      name: "Cotton Bamboo",
+      totalStock: 18,
+      colors: [
+        { colorId: "color-5", colorName: "Abu-abu", stock: 10, avgPrice: 65000 },
+        { colorId: "color-6", colorName: "Navy", stock: 8, avgPrice: 66000 },
+      ],
+    },
+  ];
+
+  // Fetch inventory saat dialog dibuka
   useEffect(() => {
     if (open) {
       setStockLoading(true);
-      api
-        .get<{ id: string; stock: number; avgPrice: number }[]>("/api/inventory")
-        .then((items) => {
-          const map: Record<string, { stock: number; avgPrice: number }> = {};
-          for (const it of items) map[it.id] = { stock: it.stock, avgPrice: it.avgPrice };
-          setStockMap(map);
-        })
-        .catch(() => setStockMap({}))
-        .finally(() => setStockLoading(false));
+      // TODO: ganti dengan API call setelah backend diupdate
+      // api.get<InventoryFabric[]>("/api/inventory")
+      //   .then(setInventory)
+      //   .catch(() => setInventory([]))
+      //   .finally(() => setStockLoading(false));
+      setTimeout(() => {
+        setInventory(MOCK_INVENTORY.filter((f) => f.totalStock > 0));
+        setStockLoading(false);
+      }, 300);
+    } else {
+      // Reset saat dialog ditutup
+      setFabricId("");
+      setColorId("");
+      setQtyRequired("");
+      setWastePercentage("10");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Fabric yang dipilih
   const selectedFabric = useMemo(
-    () => getFabricCatalogById(fabricId),
-    [fabricId]
+    () => inventory.find((f) => f.id === fabricId),
+    [inventory, fabricId]
   );
-  const stock = fabricId ? stockMap[fabricId]?.stock ?? 0 : 0;
-  const avgPrice = fabricId ? stockMap[fabricId]?.avgPrice ?? 0 : 0;
+
+  // Warna yang tersedia untuk fabric terpilih (stok > 0)
+  const availableColors = useMemo(
+    () => selectedFabric?.colors.filter((c) => c.stock > 0) ?? [],
+    [selectedFabric]
+  );
+
+  // Warna yang dipilih
+  const selectedColor = useMemo(
+    () => availableColors.find((c) => c.colorId === colorId),
+    [availableColors, colorId]
+  );
 
   const qtyRequiredNum = parseFloat(qtyRequired) || 0;
   const wasteNum = parseFloat(wastePercentage) || 0;
   const qtyActual = qtyRequiredNum * (1 + wasteNum / 100);
-  const materialCost = qtyActual * avgPrice;
-  const isStockEnough = stock >= qtyActual;
+  const materialCost = qtyActual * (selectedColor?.avgPrice ?? 0);
+  const isStockEnough = (selectedColor?.stock ?? 0) >= qtyActual;
 
-  // Hanya kain yang stoknya > 0 yang bisa ditambahkan ke BOM
-  const availableFabrics = useMemo(
-    () => FABRIC_CATALOG.filter((f) => (stockMap[f.id]?.stock ?? 0) > 0),
-    [stockMap]
-  );
-
-  const toast = useToast();
+  // Reset colorId saat fabric berubah
+  const handleFabricChange = (val: string) => {
+    setFabricId(val || "");
+    setColorId("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,14 +154,16 @@ export function AddBOMItemDialog({
     try {
       const created = await api.post<BomItem>(`/api/orders/${orderId}/bom`, {
         fabricId,
+        fabricColorId: colorId,
         qtyRequired: qtyRequiredNum,
         wastePercentage: wasteNum,
       });
       setFabricId("");
+      setColorId("");
       setQtyRequired("");
       setWastePercentage("10");
       onOpenChange(false);
-      toast.success(`Bahan ${selectedFabric?.name} ditambahkan ke BOM`);
+      toast.success(`Bahan ${selectedFabric?.name} — ${selectedColor?.colorName} ditambahkan ke BOM`);
       onAdded?.(created);
     } catch (err) {
       toast.error(`Gagal: ${(err as Error).message}`);
@@ -115,108 +178,168 @@ export function AddBOMItemDialog({
         <DialogHeader>
           <DialogTitle>Tambah Bahan ke BOM</DialogTitle>
           <DialogDescription>
-            {orderNumber} — Pilih kain dan kebutuhan bersih
+            {orderNumber} — Pilih kain, warna, dan kebutuhan bersih
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <DialogBody>
           <div className="grid gap-4">
-            {/* Fabric */}
+
+            {/* Step 1 — Pilih Jenis Kain */}
             <div className="grid gap-2">
-              <Label>Jenis Kain *</Label>
+              <Label>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-4 w-4 rounded-full bg-primary text-[10px] text-white font-bold flex items-center justify-center">1</span>
+                  Jenis Kain *
+                </span>
+              </Label>
               <Select
                 value={fabricId}
-                onValueChange={(val) => setFabricId(val || "")}
+                onValueChange={handleFabricChange}
                 disabled={stockLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={stockLoading ? "Memuat stok..." : "Pilih kain"} />
+                  <SelectValue placeholder={stockLoading ? "Memuat stok..." : "Pilih jenis kain"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableFabrics.length === 0 && !stockLoading ? (
+                  {inventory.length === 0 && !stockLoading ? (
                     <p className="px-3 py-4 text-xs text-muted-foreground text-center">
                       Semua stok habis — tambah stok dulu
                     </p>
                   ) : (
-                    availableFabrics.map((f) => (
+                    inventory.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
-                        {f.name} (stok {stockMap[f.id]?.stock ?? 0} kg)
+                        {f.name}
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          ({f.totalStock} kg total)
+                        </span>
                       </SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
-              {selectedFabric && (
-                <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Stok tersedia</span>
-                    <span className={isStockEnough ? "text-green-600 font-medium" : "text-red-600 font-semibold"}>
-                      {stock} kg
-                    </span>
+            </div>
+
+            {/* Step 2 — Pilih Warna (muncul setelah fabric dipilih) */}
+            {fabricId && (
+              <div className="grid gap-2">
+                <Label>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-4 w-4 rounded-full bg-primary text-[10px] text-white font-bold flex items-center justify-center">2</span>
+                    Warna *
+                  </span>
+                </Label>
+                <Select
+                  value={colorId}
+                  onValueChange={(val) => setColorId(val || "")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih warna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableColors.length === 0 ? (
+                      <p className="px-3 py-4 text-xs text-muted-foreground text-center">
+                        Semua warna stok habis
+                      </p>
+                    ) : (
+                      availableColors.map((c) => (
+                        <SelectItem key={c.colorId} value={c.colorId}>
+                          <span className="flex items-center gap-2">
+                            <span>{c.colorName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {c.stock} kg · {formatRupiah(c.avgPrice)}/kg
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {/* Info warna terpilih */}
+                {selectedColor && (
+                  <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Stok tersedia</span>
+                      <span className={isStockEnough ? "text-green-600 font-medium" : "text-red-600 font-semibold"}>
+                        {selectedColor.stock} kg
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Harga rata-rata</span>
+                      <span>{formatRupiah(selectedColor.avgPrice)}/kg</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Harga rata-rata</span>
-                    <span>{formatRupiah(avgPrice)}/kg</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Qty Required */}
-            <div className="grid gap-2">
-              <Label htmlFor="qty">Kebutuhan Bersih (kg) *</Label>
-              <Input
-                id="qty"
-                type="number"
-                step="0.1"
-                min="0"
-                placeholder="Contoh: 10"
-                value={qtyRequired}
-                onChange={(e) => setQtyRequired(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Waste */}
-            <div className="grid gap-2">
-              <Label htmlFor="waste">Persentase Waste (%)</Label>
-              <Input
-                id="waste"
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                value={wastePercentage}
-                onChange={(e) => setWastePercentage(e.target.value)}
-              />
-            </div>
-
-            {selectedFabric && qtyRequiredNum > 0 && (
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Qty actual (+ waste)</span>
-                  <span className="font-medium">{qtyActual.toFixed(2)} kg</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Harga rata-rata</span>
-                  <span>{formatRupiah(avgPrice)}/kg</span>
-                </div>
-                <div className="flex justify-between text-sm pt-1 border-t border-gray-200">
-                  <span className="font-semibold">Estimasi Biaya</span>
-                  <span className="font-bold text-primary">{formatRupiah(materialCost)}</span>
-                </div>
-                {!isStockEnough && (
-                  <p className="text-xs text-red-600 font-medium">
-                    ⚠️ Stok tidak cukup ({stock} kg tersedia)
-                  </p>
                 )}
               </div>
             )}
+
+            {/* Step 3 — Qty & Waste (muncul setelah warna dipilih) */}
+            {colorId && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="qty">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-4 w-4 rounded-full bg-primary text-[10px] text-white font-bold flex items-center justify-center">3</span>
+                      Kebutuhan Bersih (kg) *
+                    </span>
+                  </Label>
+                  <Input
+                    id="qty"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="Contoh: 10"
+                    value={qtyRequired}
+                    onChange={(e) => setQtyRequired(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="waste">Persentase Waste (%)</Label>
+                  <Input
+                    id="waste"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={wastePercentage}
+                    onChange={(e) => setWastePercentage(e.target.value)}
+                  />
+                </div>
+
+                {qtyRequiredNum > 0 && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Qty actual (+ waste)</span>
+                      <span className="font-medium">{qtyActual.toFixed(2)} kg</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Harga rata-rata</span>
+                      <span>{formatRupiah(selectedColor?.avgPrice ?? 0)}/kg</span>
+                    </div>
+                    <div className="flex justify-between text-sm pt-1 border-t border-gray-200">
+                      <span className="font-semibold">Estimasi Biaya</span>
+                      <span className="font-bold text-primary">{formatRupiah(materialCost)}</span>
+                    </div>
+                    {!isStockEnough && (
+                      <p className="text-xs text-red-600 font-medium">
+                        ⚠️ Stok tidak cukup ({selectedColor?.stock} kg tersedia)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
           </div>
           </DialogBody>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>
-            <Button type="submit" disabled={!fabricId || qtyRequiredNum <= 0 || loading}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={!fabricId || !colorId || qtyRequiredNum <= 0 || loading}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

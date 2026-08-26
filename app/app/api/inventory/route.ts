@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 
-/** GET /api/inventory — fabrics + stok live + avg price (untuk grid inventory)
- * Hanya tampilkan kain yang:
- * 1. Sudah pernah ada pembelian (batchCount > 0)
- * 2. Datanya aktif
+/** GET /api/inventory — fabrics + stok per warna (hanya yang punya batch)
+ * Response shape per fabric:
+ * { id, name, unit, reorderPoint, totalStock, avgPrice, lastPurchase,
+ *   colorCount, isLowStock,
+ *   colors: [{ colorId, colorName, stock, avgPrice, lastPurchase }] }
  */
 export async function GET() {
   const { error } = await requireUser();
@@ -14,22 +15,52 @@ export async function GET() {
   const fabrics = await prisma.fabric.findMany({
     where: {
       isActive: true,
-      batches: { some: {} }, // hanya fabric yang punya minimal 1 batch pembelian
+      colors: { some: { batches: { some: {} } } }, // hanya fabric yang punya pembelian
     },
     orderBy: { name: "asc" },
     include: {
-      batches: { select: { qtyRemaining: true, pricePerKg: true, purchaseDate: true } },
+      colors: {
+        where: { isActive: true },
+        include: {
+          batches: {
+            select: { qtyRemaining: true, pricePerKg: true, purchaseDate: true },
+          },
+        },
+      },
     },
   });
 
   const result = fabrics.map((f) => {
-    const stock = f.batches.reduce((s, b) => s + b.qtyRemaining, 0);
-    const totalValue = f.batches.reduce((s, b) => s + b.qtyRemaining * b.pricePerKg, 0);
-    const avgPrice = stock > 0 ? totalValue / stock : 0;
-    const lastPurchase = f.batches.length
-      ? new Date(Math.max(...f.batches.map((b) => new Date(b.purchaseDate).getTime())))
-          .toISOString()
-          .split("T")[0]
+    // Aggregate per warna
+    const colors = f.colors
+      .filter((c) => c.batches.length > 0)
+      .map((c) => {
+        const stock = c.batches.reduce((s, b) => s + b.qtyRemaining, 0);
+        const totalValue = c.batches.reduce((s, b) => s + b.qtyRemaining * b.pricePerKg, 0);
+        const avgPrice = stock > 0 ? totalValue / stock : 0;
+        const lastPurchase = c.batches.length
+          ? new Date(Math.max(...c.batches.map((b) => new Date(b.purchaseDate).getTime())))
+              .toISOString().split("T")[0]
+          : null;
+        return {
+          colorId: c.id,
+          colorName: c.colorName,
+          stock: Math.round(stock * 10) / 10,
+          avgPrice: Math.round(avgPrice),
+          lastPurchase,
+          isLowStock: stock > 0 && stock <= f.reorderPoint,
+        };
+      });
+
+    const totalStock = colors.reduce((s, c) => s + c.stock, 0);
+    const allBatches = f.colors.flatMap((c) => c.batches);
+    const avgPriceTotal =
+      totalStock > 0
+        ? allBatches.reduce((s, b) => s + b.qtyRemaining * b.pricePerKg, 0) / totalStock
+        : 0;
+    const lastPurchase = allBatches.length
+      ? new Date(Math.max(...allBatches.map((b) => new Date(b.purchaseDate).getTime())))
+          .toISOString().split("T")[0]
       : null;
 
     return {
@@ -37,18 +68,17 @@ export async function GET() {
       name: f.name,
       unit: f.unit,
       reorderPoint: f.reorderPoint,
-      stock: Math.round(stock * 10) / 10,
-      avgPrice: Math.round(avgPrice),
+      totalStock: Math.round(totalStock * 10) / 10,
+      stock: Math.round(totalStock * 10) / 10, // alias untuk backward compat
+      avgPrice: Math.round(avgPriceTotal),
       lastPurchase,
-      batchCount: f.batches.length,
-      isLowStock: stock > 0 && stock <= f.reorderPoint,
+      colorCount: colors.length,
+      isLowStock: colors.some((c) => c.isLowStock),
+      colors,
     };
   });
 
   return NextResponse.json(result, {
-    headers: {
-      // Cache 60 detik di Vercel Edge, stale-while-revalidate 5 menit
-      "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
-    },
+    headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" },
   });
 }
