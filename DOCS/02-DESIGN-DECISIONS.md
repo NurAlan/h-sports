@@ -1,241 +1,139 @@
 # H-Sport: Design Decisions
 
-**Tanggal:** 25 Agustus 2026  
-**Status:** LOCKED ✅ — Sudah diimplementasikan di UI prototype (mock data)
+**Tanggal:** 25 Agustus 2026
+**Status:** ✅ LOCKED & IMPLEMENTED
 
 ---
 
-## 1. Accounting Method
+## 1. Waste Treatment: Masuk HPP (Opsi A)
 
-### **Waste Treatment: Masuk HPP (Opsi A)**
+**Decision:** Waste dihitung sebagai bagian dari material cost.
 
-**Decision:**
-- Waste/sisa potongan **dihitung sebagai bagian dari material cost**
-- Formula: `Material Cost = (qty_used + waste_qty) × harga_kulak`
-
-**Rationale:**
-- Profit lebih akurat karena waste = real cost
-- Owner tahu cost sesungguhnya per order
-- Harga jual reflect true material consumption
-
-**Implementation:**
-- BOM (Bill of Materials) mencatat:
-  - `qty_required` (kebutuhan bersih)
-  - `waste_percentage` (%)
-  - `qty_actual = qty_required × (1 + waste_percentage)`
-- Stok berkurang sebesar `qty_actual`
-- HPP pakai `qty_actual × harga_kulak`
-
----
-
-## 2. Inventory Costing Method
-
-### **FIFO (First In First Out)**
-
-**Decision:**
-- Material cost per order dihitung dari **batch paling lama** (first purchased, first used)
-- Track stock movement per batch
-
-**Rationale:**
-- Lebih real untuk stok fisik (barang lama dipakai dulu)
-- Owner bisa track batch mana yang sudah dipakai
-- Sesuai dengan praktek gudang fisik
-
-**Implementation:**
-- Tabel `fabric_batches`: per pembelian = 1 batch
-- Kolom: `batch_id`, `fabric_id`, `purchase_date`, `qty_purchased`, `qty_remaining`, `price_per_kg`
-- Saat ambil kain untuk order:
-  1. Sort batch by `purchase_date ASC`
-  2. Alokasikan dari batch paling lama sampai kebutuhan terpenuhi
-  3. Update `qty_remaining` per batch
-- Jika 1 batch tidak cukup, ambil dari batch berikutnya (multiple batches per order)
-
-**Alternative (future):**
-- Weighted average (lebih simpel, tapi less accurate untuk stok fisik)
-
----
-
-## 3. Tech Stack
-
-### **Web App: Next.js (React) Monolith**
-
-**Stack:**
-- **Framework:** Next.js 14+ (App Router)
-- **Frontend:** React 18+, TypeScript
-- **Backend:** Next.js API Routes (serverless functions)
-- **Database:** PostgreSQL (via Supabase)
-- **ORM:** Prisma (type-safe, migration management)
-- **UI Library:** Tailwind CSS + shadcn/ui (optional)
-- **Auth:** NextAuth.js (future, single user MVP tidak butuh auth)
-- **Deployment:** Vercel (start) → self-hosted VPS (scale)
-
-**Folder Structure:**
 ```
-/hsport
-├── /src
-│   ├── /app
-│   │   ├── /api              # API routes (REST endpoints)
-│   │   ├── /dashboard        # UI pages
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── /components           # React components
-│   ├── /lib                  # Utils, db client, helpers
-│   └── /types                # TypeScript types
-├── /prisma
-│   ├── schema.prisma         # Database schema
-│   └── /migrations           # SQL migration files
-├── /public                   # Static assets
-├── package.json
-├── tsconfig.json
-└── next.config.js
+qty_actual = qty_required × (1 + waste_percentage / 100)
+material_cost = qty_actual × price_per_kg
 ```
 
-**Why Next.js?**
-- ✅ SSR + CSR (fast initial load, reactive UI)
-- ✅ API routes built-in (no separate backend server)
-- ✅ TypeScript native
-- ✅ Deploy mudah (Vercel 1-click)
-- ✅ Mobile-friendly (responsive by default)
+Stok berkurang sebesar `qty_actual`. HPP memakai `qty_actual × harga_kulak`.
 
 ---
 
-## 4. Database
+## 2. Inventory Costing: FIFO
 
-### **PostgreSQL via Supabase**
+**Decision:** Material cost per order dihitung dari batch paling lama.
 
-**Decision:**
-- Start: **Supabase** (managed PostgreSQL)
-- Scale: **Self-hosted PostgreSQL** (jika Supabase terlalu mahal)
-
-**Rationale:**
-- Supabase free tier: 500 MB database, 2 GB bandwidth/month (cukup untuk prototype)
-- Instant REST API (optional, bisa pakai Prisma saja)
-- Built-in auth, realtime (future features)
-- Jika scaling: export database → migrasi ke self-hosted (PostgreSQL portable)
-
-**Connection:**
-- Supabase: `postgresql://user:pass@db.supabase.co:5432/postgres`
-- Self-hosted: `postgresql://user:pass@localhost:5432/hsport`
-- Prisma ORM: abstraksi, tidak ada vendor lock-in
+- Tabel `fabric_batches`: 1 pembelian = 1 batch
+- Saat order masuk produksi: sort batch by `purchase_date ASC`, alokasikan dari tertua
+- Dicatat di tabel `batch_usage`
+- Jika total stok tidak cukup → error 400 (ditampilkan sebagai peringatan di UI sebelum klik)
 
 ---
 
-## 5. Pricing Strategy
+## 3. Tech Stack (Actual)
 
-### **Cost-Based Markup (Flexible)**
+| Layer | Pilihan |
+|-------|---------|
+| Framework | Next.js (App Router) |
+| Language | TypeScript |
+| Database | PostgreSQL via Supabase |
+| ORM | Prisma 6.19.3 |
+| UI | Tailwind CSS v4 + shadcn/ui + Radix UI |
+| Auth | Supabase Auth (Google OAuth + email/password) |
+| Charts | Recharts |
+| Deployment | Vercel (h-sports-zeta.vercel.app) |
+| Design | Mobile-first, Inter font, bg gray-50, primary vibrant blue |
 
-**Formula:**
+**Catatan:**
+- `shadcn/ui` Base UI komponen (Button/Dialog/Input) diganti native HTML/Radix di beberapa tempat karena klik/state rusak di mobile
+- `shadcn v4` dipakai, bukan v3
+- Next.js 16 (bukan 14 seperti rencana awal)
 
-**Option A: Percentage Markup (default)**
+---
+
+## 4. Folder Structure (Actual)
+
 ```
-HPP = Material Cost + Labor Cost
-Harga Jual = HPP × (1 + Markup%)
-Profit = Harga Jual - HPP - Ongkir
+hsport/
+├── AGENTS.md
+├── CONTEXT.md
+├── DOCS/
+│   ├── 01-BUSINESS-REQUIREMENTS.md
+│   ├── 02-DESIGN-DECISIONS.md
+│   ├── 03-DATABASE-SCHEMA.md
+│   ├── 04-UI-IMPLEMENTATION.md
+│   ├── 05-IMPLEMENTATION-SUMMARY.md
+│   ├── 06-MIGRATION-PLAN.md
+│   ├── 07-API-REFERENCE.md
+│   └── agents/
+│       ├── domain.md
+│       ├── issue-tracker.md
+│       └── triage-labels.md
+└── app/                         ← Next.js app root
+    ├── app/                     ← App Router pages + API routes
+    │   ├── api/
+    │   │   ├── fabrics/
+    │   │   ├── fabric-batches/
+    │   │   ├── orders/[id]/bom/
+    │   │   ├── orders/[id]/timeline/
+    │   │   ├── orders/[id]/costing/
+    │   │   ├── dashboard/
+    │   │   ├── reports/
+    │   │   ├── production/
+    │   │   └── inventory/
+    │   ├── orders/[id]/
+    │   ├── inventory/[id]/
+    │   ├── production/
+    │   ├── reports/
+    │   └── profile/fabrics/
+    ├── components/
+    │   ├── dialogs/             ← 5 dialog utama
+    │   ├── dashboard/           ← RevenueChart, StockDonut
+    │   ├── reports/             ← ComparisonBarChart
+    │   ├── ui/                  ← shadcn/ui + CurrencyInput
+    │   └── skeletons.tsx
+    ├── lib/
+    │   ├── api.ts               ← client fetch helper
+    │   ├── api-auth.ts          ← requireUser() helper
+    │   ├── fifo.ts              ← FIFO deduction logic
+    │   ├── prisma.ts            ← singleton PrismaClient
+    │   ├── master-data.ts       ← FABRIC_CATALOG (24 kain)
+    │   └── utils.ts
+    └── prisma/
+        ├── schema.prisma
+        └── seed.ts
 ```
 
-**Option B: Fixed Profit (override per order)**
-```
-Harga Jual = HPP + Fixed Profit
-Profit = Fixed Profit - Ongkir
-```
+---
 
-**Implementation:**
-- Owner set `default_markup_percentage` (e.g., 30%)
-- Per order, bisa override:
-  - `pricing_method`: `'markup'` | `'fixed_profit'`
-  - `markup_percentage` (jika markup)
-  - `fixed_profit` (jika fixed)
-- Shipping cost (`ongkir`) dikurangi dari profit (bukan markup dari HPP)
+## 5. Database Connection
+
+- `DATABASE_URL` = transaction pooler port **5432** (bukan 6543), tanpa tanda kutip `"`
+- `DIRECT_URL` = direct connection untuk migration
+- Prisma commands: `npm run db:push`, `npm run db:seed` — **jangan `npx prisma`** (memilih Prisma 8 RC)
 
 ---
 
-## 6. Timeline Tracking
+## 6. Auth Architecture
 
-### **Production Stages (Flexible Duration)**
-
-**Stages:**
-1. Pengukuran (measurement)
-2. Pemotongan (cutting)
-3. Jahit (sewing) — ada **upah jahit** (labor cost)
-4. Finishing (ironing, packaging)
-5. QC (quality control)
-
-**Status per stage:**
-- `not_started` → `in_progress` → `completed`
-
-**Duration:**
-- Owner set `estimated_duration` (hours/days) per stage per order
-- Catat `actual_start_time`, `actual_end_time`
-- Hitung `actual_duration` = end - start
-
-**Implementation:**
-- Tabel `production_timelines`:
-  - `order_id`, `stage_name`, `status`, `estimated_duration`, `actual_start`, `actual_end`
-- UI: Gantt chart / kanban board (future)
+- Supabase Auth menangani `auth.users`
+- Prisma menangani semua query bisnis
+- `requireUser()` di `lib/api-auth.ts` verifikasi session di setiap Route Handler
+- Signup dimatikan — hanya email terdaftar yang bisa login
 
 ---
 
-## 7. Labor Cost
+## 7. Dashboard Data
 
-**Scope:**
-- **Upah jahit** per order (manual input saat stage "Jahit")
-- **Ongkir** per order (manual input saat kirim)
+**Decision:** Dashboard dan laporan menghitung **langsung dari tabel `orders`** (bukan `monthly_summaries`).
 
-**Out of scope (Phase 1):**
-- Listrik (gabung rumah, tidak bisa dipisah)
-- Overhead lain (rent, maintenance) — bisa ditambahkan nanti sebagai fixed cost per bulan
+Rationale: `monthly_summaries` tidak pernah diisi otomatis. Data realtime lebih akurat.
+
+Profit hanya dihitung untuk Order berstatus `shipped`.
 
 ---
 
-## 8. Reporting
+## 8. Status Workflow Validasi
 
-### **Laporan yang Dibutuhkan:**
-
-**Per Order:**
-- Material breakdown (kain A: X kg @ Rp Y = Rp Z)
-- Labor cost (upah jahit)
-- HPP (total material + labor)
-- Harga jual (calculated or override)
-- Ongkir
-- **Profit/Loss** = Harga jual - HPP - Ongkir
-- Profit margin % = (Profit / Harga jual) × 100
-
-**Per Period (bulan/tahun):**
-- Total orders
-- Total revenue (omzet)
-- Total HPP
-- Total ongkir
-- **Gross profit** = Revenue - HPP - Ongkir
-- Profit margin % = (Gross profit / Revenue) × 100
-
-**Inventory:**
-- Per kain: stok tersedia (kg)
-- Nilai stok (qty × avg price atau FIFO last batch price)
-- Alerts: stok menipis (future)
-
----
-
-## 9. Out of Scope (Phase 1)
-
-- Multi-user / role-based access control
-- Customer CRM (hanya nama/kontak sederhana)
-- Supplier management (hanya catat nama supplier, tidak ada PO workflow)
-- Payment tracking (invoice, payment status)
-- Inventory reorder alerts (manual check stok)
-- Mobile app (web responsive cukup)
-
----
-
-## 10. Next Steps
-
-- ✅ Design decisions locked
-- ⏳ **ERD (Entity Relationship Diagram)**
-- ⏳ **Database Schema (Prisma schema.prisma)**
-- ⏳ **API Contract (REST endpoints)**
-- ⏳ **UI Wireframe (screen flow)**
-- ⏳ **Implementation timeline**
-
----
-
-**Approved by:** Owner (Alan)  
-**Ready for:** Database schema design
+- **Masuk QC**: semua stage produksi (non-QC) harus `completed`
+- **Tandai Selesai**: stage QC harus `completed`
+- **Mulai Produksi**: stok harus cukup (FIFO check sebelum deduction)
