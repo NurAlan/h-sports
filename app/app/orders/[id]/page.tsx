@@ -181,6 +181,48 @@ export default function OrderDetailPage() {
   const currentIndex = STATUS_FLOW.indexOf(order.status as (typeof STATUS_FLOW)[number]);
   const nextAction = NEXT_ACTION[order.status];
 
+  // Validasi kondisi sebelum advance status
+  const productionStages = timeline.filter((s) => s.stageName !== "qc");
+  const qcStage = timeline.find((s) => s.stageName === "qc");
+
+  /** Semua stage produksi (non-QC) selesai? */
+  const allProductionDone =
+    productionStages.length > 0 &&
+    productionStages.every((s) => s.status === "completed");
+
+  /** Stage QC selesai? */
+  const qcDone = qcStage?.status === "completed";
+
+  /**
+   * Apakah tombol advance status boleh diklik?
+   * - Masuk QC (in_production → qc): semua stage produksi harus selesai
+   * - Tandai Selesai (qc → shipped): stage QC harus selesai
+   * - Mulai Produksi (draft → in_production): bebas
+   */
+  const canAdvance = (() => {
+    if (!nextAction) return false;
+    if (nextAction.next === "qc") {
+      return allProductionDone;
+    }
+    if (nextAction.next === "shipped") {
+      return qcDone;
+    }
+    return true; // draft → in_production
+  })();
+
+  const advanceBlockReason = (() => {
+    if (!nextAction || canAdvance) return null;
+    if (nextAction.next === "qc") {
+      const pending = productionStages.filter((s) => s.status !== "completed");
+      if (productionStages.length === 0) return "Belum ada timeline produksi — isi dulu via tombol Update";
+      return `${pending.length} stage belum selesai: ${pending.map((s) => s.stageName).join(", ")}`;
+    }
+    if (nextAction.next === "shipped") {
+      return "Stage QC belum selesai — tandai QC completed di timeline";
+    }
+    return null;
+  })();
+
   /** Lanjutkan status: draft → in_production → qc → shipped */
   const handleAdvanceStatus = async () => {
     if (!nextAction) return;
@@ -345,10 +387,19 @@ export default function OrderDetailPage() {
             )}
 
             {nextAction && (
+              <>
+                {/* Pesan blokir jika kondisi belum terpenuhi */}
+                {!canAdvance && advanceBlockReason && (
+                  <div className="mb-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                    <p className="text-[11px] text-amber-700 font-medium">
+                      🔒 {advanceBlockReason}
+                    </p>
+                  </div>
+                )}
               <Button
                 onClick={handleAdvanceStatus}
-                disabled={statusUpdating}
-                className="w-full gap-1.5"
+                disabled={statusUpdating || !canAdvance}
+                className={`w-full gap-1.5 ${!canAdvance ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {statusUpdating ? (
                   "Memproses..."
@@ -366,6 +417,7 @@ export default function OrderDetailPage() {
                   </>
                 )}
               </Button>
+              </>
             )}
             {order.status === "shipped" && (
               <p className="text-center text-xs font-medium text-green-600 mt-1">

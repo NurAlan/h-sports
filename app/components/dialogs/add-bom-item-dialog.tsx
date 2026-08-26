@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -118,7 +119,8 @@ export function AddBOMItemDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <DialogBody>
+          <div className="grid gap-4">
             {/* Fabric */}
             <div className="grid gap-2">
               <Label>Jenis Kain *</Label>
@@ -211,6 +213,7 @@ export function AddBOMItemDialog({
               </div>
             )}
           </div>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>
             <Button type="submit" disabled={!fabricId || qtyRequiredNum <= 0 || loading}>

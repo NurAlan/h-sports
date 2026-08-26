@@ -7,7 +7,7 @@ import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FAB } from "@/components/fab";
-import { ChevronRight, AlertTriangle, Search } from "lucide-react";
+import { ChevronRight, AlertTriangle, Search, Package } from "lucide-react";
 import { AddFabricPurchaseDialog } from "@/components/dialogs/add-fabric-purchase-dialog";
 import { api } from "@/lib/api";
 import { FabricCardSkeleton } from "@/components/skeletons";
@@ -81,6 +81,22 @@ export default function InventoryPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
+        {!loading && filteredFabrics.length === 0 && !search && (
+          <div className="col-span-2 flex flex-col items-center justify-center py-12 text-center">
+            <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center mb-3">
+              <Package className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold text-foreground mb-1">Belum ada stok kain</p>
+            <p className="text-xs text-muted-foreground max-w-[220px]">
+              Tambah pembelian kain pertama dengan tombol + di bawah
+            </p>
+          </div>
+        )}
+        {!loading && filteredFabrics.length === 0 && search && (
+          <div className="col-span-2 text-center py-8">
+            <p className="text-sm text-muted-foreground">Tidak ada kain yang cocok dengan &quot;{search}&quot;</p>
+          </div>
+        )}
         {!loading && filteredFabrics.map((fabric) => {
           const stock = fabric.stock;
           const avgPrice = fabric.avgPrice;
@@ -167,7 +183,7 @@ export default function InventoryPage() {
       )}
 
       {/* Floating Action Button */}
-      <FAB onClick={() => setIsDialogOpen(true)} label="Tambah Pembelian Kain" />
+      <FAB onClick={() => setIsDialogOpen(true)} label="Tambah Pembelian Kain" hidden={isDialogOpen} />
 
       {/* Add Fabric Purchase Dialog */}
       <AddFabricPurchaseDialog

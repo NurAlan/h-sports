@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -103,7 +104,8 @@ export function AddFabricPurchaseDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <DialogBody>
+          <div className="grid gap-4">
             {/* Fabric Selection — lock jika prefill dari detail inventory */}
             <div className="grid gap-2">
               <Label htmlFor="fabric">Jenis Kain *</Label>
@@ -182,6 +184,7 @@ export function AddFabricPurchaseDialog({
               />
             </div>
           </div>
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"

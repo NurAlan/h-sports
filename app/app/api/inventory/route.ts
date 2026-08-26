@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 
-/** GET /api/inventory — fabrics + stok live + avg price (untuk grid inventory) */
+/** GET /api/inventory — fabrics + stok live + avg price (untuk grid inventory)
+ * Hanya tampilkan kain yang:
+ * 1. Sudah pernah ada pembelian (batchCount > 0)
+ * 2. Datanya aktif
+ */
 export async function GET() {
   const { error } = await requireUser();
   if (error) return error;
 
   const fabrics = await prisma.fabric.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      batches: { some: {} }, // hanya fabric yang punya minimal 1 batch pembelian
+    },
     orderBy: { name: "asc" },
     include: {
       batches: { select: { qtyRemaining: true, pricePerKg: true, purchaseDate: true } },
@@ -34,7 +41,7 @@ export async function GET() {
       avgPrice: Math.round(avgPrice),
       lastPurchase,
       batchCount: f.batches.length,
-      isLowStock: stock <= f.reorderPoint,
+      isLowStock: stock > 0 && stock <= f.reorderPoint,
     };
   });
 

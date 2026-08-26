@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -120,7 +121,8 @@ export function UpdateTimelineDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <DialogBody>
+          <div className="grid gap-4">
             {stages.map((stage, index) => (
               <div key={stage.id} className="grid gap-2">
                 <div className="flex items-center justify-between">
@@ -148,6 +150,7 @@ export function UpdateTimelineDialog({
               </div>
             ))}
           </div>
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"

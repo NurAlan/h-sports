@@ -108,7 +108,6 @@ export interface ProductionTimeline {
 }
 
 export interface MonthlySummary {
-  id: string;
   month: string;
   totalOrders: number;
   totalRevenue: number;
@@ -117,8 +116,18 @@ export interface MonthlySummary {
   avgMargin: number;
 }
 
+export interface MonthSummary {
+  revenue: number;
+  hpp: number;
+  profit: number;
+  margin: number;
+  orderCount: number;
+}
+
 export interface DashboardData {
   summaries: MonthlySummary[];
+  thisMonth: MonthSummary;
+  lastMonth: MonthSummary;
   totalStock: number;
   lowStock: { id: string; name: string; stock: number; reorderPoint: number }[];
   activeOrders: Order[];

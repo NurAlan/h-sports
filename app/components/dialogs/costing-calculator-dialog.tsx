@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -112,7 +113,8 @@ export function CostingCalculatorDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <DialogBody>
+          <div className="grid gap-4">
             {/* Material cost (readonly) */}
             <div className="grid gap-2">
               <Label>Material Cost (dari BOM)</Label>
@@ -212,6 +214,7 @@ export function CostingCalculatorDialog({
               )}
             </div>
           </div>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Batal</Button>
             <Button type="submit" disabled={loading}>

@@ -369,7 +369,7 @@ export default function InventoryDetailPage() {
       />
 
       {/* FAB Tambah Stok — konsisten dengan halaman lain */}
-      <FAB onClick={() => setIsAddStockOpen(true)} label="Tambah Stok" />
+      <FAB onClick={() => setIsAddStockOpen(true)} label="Tambah Stok" hidden={isAddStockOpen} />
     </div>
   );
 }

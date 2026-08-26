@@ -8,9 +8,13 @@ interface FABProps {
   onClick: () => void;
   label?: string;
   className?: string;
+  /** Sembunyikan FAB saat dialog terbuka — mencegah FAB menghalangi konten */
+  hidden?: boolean;
 }
 
-export function FAB({ onClick, label = "Add", className }: FABProps) {
+export function FAB({ onClick, label = "Add", className, hidden = false }: FABProps) {
+  if (hidden) return null;
+
   return (
     <Button
       onClick={onClick}

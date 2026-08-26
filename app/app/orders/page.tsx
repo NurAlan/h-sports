@@ -421,7 +421,7 @@ export default function OrdersPage() {
         )}
       </div>
 
-      <FAB onClick={() => setIsDialogOpen(true)} label="Buat Order Baru" />
+      <FAB onClick={() => setIsDialogOpen(true)} label="Buat Order Baru" hidden={isDialogOpen} />
 
       <CreateOrderDialog
         open={isDialogOpen}

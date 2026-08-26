@@ -11,8 +11,7 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { StockDonut } from "@/components/dashboard/stock-donut";
 import { DashboardSkeleton } from "@/components/skeletons";
 import { api, type DashboardData } from "@/lib/api";
-import { formatRupiah, formatDate, daysUntil, daysLeftLabel } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatRupiah, formatDate, daysUntil, daysLeftLabel, cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-200 text-gray-700" },
@@ -25,28 +24,34 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [donutData, setDonutData] = useState<{ name: string; value: number }[]>([]);
 
   useEffect(() => {
-    api
-      .get<DashboardData>("/api/dashboard")
-      .then(setData)
+    Promise.all([
+      api.get<DashboardData>("/api/dashboard"),
+      api.get<{ id: string; name: string; stock: number }[]>("/api/inventory"),
+    ])
+      .then(([dashData, invData]) => {
+        setData(dashData);
+        // Donut: kain yang punya stok > 0, sort terbesar dulu, ambil top 6
+        const donut = invData
+          .filter((f) => f.stock > 0)
+          .sort((a, b) => b.stock - a.stock)
+          .slice(0, 6)
+          .map((f) => ({ name: f.name, value: f.stock }));
+        setDonutData(donut);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const latest = data?.summaries?.[data.summaries.length - 1];
-  const prev = data?.summaries?.[data.summaries.length - 2];
+  const thisMonth = data?.thisMonth;
+  const lastMonth = data?.lastMonth;
   const profitTrend =
-    latest && prev && prev.totalProfit > 0
-      ? ((latest.totalProfit - prev.totalProfit) / prev.totalProfit) * 100
+    thisMonth && lastMonth && lastMonth.profit > 0
+      ? ((thisMonth.profit - lastMonth.profit) / lastMonth.profit) * 100
       : null;
 
-  const donutData =
-    data?.lowStock.length || data?.totalStock
-      ? [
-          // Simulasi dari lowStock — komposisi detail akan dari /api/inventory
-        ]
-      : [];
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
@@ -77,11 +82,11 @@ export default function DashboardPage() {
               <div className="flex items-center gap-1.5 mb-1">
                 <TrendingUp className="h-4 w-4 text-blue-200" />
                 <p className="text-xs font-medium text-blue-200">
-                  Profit {latest?.month?.slice(5)}/{latest?.month?.slice(0, 4) || "-"}
+                  Profit Bulan Ini
                 </p>
               </div>
               <p className="text-3xl font-bold mb-2">
-                {formatRupiah(latest?.totalProfit ?? 0)}
+                {formatRupiah(thisMonth?.profit ?? 0)}
               </p>
               <div className="flex items-center gap-3 text-xs text-blue-200">
                 <span className="bg-white/15 rounded-full px-2 py-0.5">
@@ -89,7 +94,7 @@ export default function DashboardPage() {
                     ? "Periode baru"
                     : `${profitTrend >= 0 ? "↑" : "↓"} ${Math.abs(profitTrend).toFixed(1)}% vs lalu`}
                 </span>
-                <span>Margin: {latest?.avgMargin?.toFixed(1) ?? 0}%</span>
+                <span>Margin: {thisMonth?.margin?.toFixed(1) ?? 0}%</span>
               </div>
             </CardContent>
           </Card>

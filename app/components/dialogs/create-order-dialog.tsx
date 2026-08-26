@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -82,7 +83,8 @@ export function CreateOrderDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <DialogBody>
+          <div className="grid gap-4">
             {/* Customer Name */}
             <div className="grid gap-2">
               <Label htmlFor="customerName">Nama Customer *</Label>
@@ -162,7 +164,7 @@ export function CreateOrderDialog({
               </div>
             </div>
           </div>
-
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"
