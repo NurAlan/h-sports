@@ -101,6 +101,20 @@ export default function OrderDetailPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [stockMap, setStockMap] = useState<Record<string, number>>({});
+  const [stockLoading, setStockLoading] = useState(false);
+
+  /** Lazy load stok — hanya fetch saat dibutuhkan */
+  const loadStockIfNeeded = async () => {
+    if (Object.keys(stockMap).length > 0) return;
+    setStockLoading(true);
+    try {
+      const invData = await api.get<{ id: string; stock: number }[]>("/api/inventory");
+      const map: Record<string, number> = {};
+      for (const it of invData) map[it.id] = it.stock;
+      setStockMap(map);
+    } catch { /* gagal fetch stok — shortages kosong */ }
+    finally { setStockLoading(false); }
+  };
 
   const [bomOpen, setBomOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
@@ -124,15 +138,9 @@ export default function OrderDetailPage() {
   const [deleteBomLoading, setDeleteBomLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      api.get<typeof order>(`/api/orders/${params.id}`),
-      api.get<{ id: string; stock: number }[]>("/api/inventory"),
-    ])
-      .then(([orderData, invData]) => {
+    api.get<typeof order>(`/api/orders/${params.id}`)
+      .then((orderData) => {
         setOrder(orderData);
-        const map: Record<string, number> = {};
-        for (const it of invData) map[it.id] = it.stock;
-        setStockMap(map);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -398,7 +406,9 @@ export default function OrderDetailPage() {
                 )}
               <Button
                 onClick={handleAdvanceStatus}
-                disabled={statusUpdating || !canAdvance}
+                onMouseEnter={loadStockIfNeeded}
+                onTouchStart={loadStockIfNeeded}
+                disabled={statusUpdating || !canAdvance || stockLoading}
                 className={`w-full gap-1.5 ${!canAdvance ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {statusUpdating ? (

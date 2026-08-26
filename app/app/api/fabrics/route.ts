@@ -13,7 +13,12 @@ export async function GET() {
       _count: { select: { batches: true, bomItems: true } },
     },
   });
-  return NextResponse.json(fabrics);
+  return NextResponse.json(fabrics, {
+    headers: {
+      // Master data kain jarang berubah — cache 5 menit
+      "Cache-Control": "s-maxage=300, stale-while-revalidate=600",
+    },
+  });
 }
 
 /** POST /api/fabrics — tambah kain baru */

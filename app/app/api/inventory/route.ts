@@ -45,5 +45,10 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: {
+      // Cache 60 detik di Vercel Edge, stale-while-revalidate 5 menit
+      "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+    },
+  });
 }
