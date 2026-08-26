@@ -32,6 +32,8 @@ interface UpdateTimelineDialogProps {
     name: string;
     status: string;
   }>;
+  /** Dipanggil setelah timeline berhasil diupdate — data langsung tampil tanpa reload */
+  onUpdated?: (stages: Array<{ id: string; stageName: string; status: string; estimatedHrs: number | null }>) => void;
 }
 
 const stages = [
@@ -54,6 +56,7 @@ export function UpdateTimelineDialog({
   orderId,
   orderNumber,
   currentStages = [],
+  onUpdated,
 }: UpdateTimelineDialogProps) {
   const getInitialStatuses = () =>
     stages.reduce((acc, stage) => {
@@ -85,16 +88,20 @@ export function UpdateTimelineDialog({
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post(`/api/orders/${orderId}/timeline`, {
-        stages: Object.entries(stageStatuses).map(([stageId, status]) => ({
-          stageName: stageId,
-          status,
-        })),
-      });
+      const created = await api.post<Array<{ id: string; stageName: string; status: string; estimatedHrs: number | null }>>(
+        `/api/orders/${orderId}/timeline`,
+        {
+          stages: Object.entries(stageStatuses).map(([stageId, status]) => ({
+            stageName: stageId,
+            status,
+          })),
+        }
+      );
 
       onOpenChange(false);
       toast.success(`Timeline ${orderNumber} berhasil diperbarui`);
-      window.location.reload();
+      // Beri tahu parent — timeline langsung tampil tanpa reload
+      onUpdated?.(created);
     } catch (err) {
       toast.error(`Gagal: ${(err as Error).message}`);
     } finally {

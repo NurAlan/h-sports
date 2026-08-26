@@ -266,6 +266,13 @@ export default function ProductionPage() {
         orderId={selectedOrder?.id ?? ""}
         orderNumber={selectedOrder?.orderNumber ?? ""}
         currentStages={selectedOrder?.stages ?? []}
+        onUpdated={() => {
+          // Refetch daftar produksi — progress bar terupdate tanpa reload
+          api
+            .get<OrderWithData[]>("/api/production")
+            .then(setOrders)
+            .catch(() => {});
+        }}
       />
     </div>
   );

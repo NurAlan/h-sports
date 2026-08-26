@@ -689,6 +689,10 @@ export default function OrderDetailPage() {
         orderId={order.id}
         orderNumber={order.orderNumber}
         currentStages={timeline.map((t) => ({ name: t.stageName, status: t.status }))}
+        onUpdated={(newTimeline) => {
+          // Timeline langsung tampil tanpa reload — update state dari response API
+          setOrder((prev) => (prev ? { ...prev, timelines: newTimeline } : prev));
+        }}
       />
       <CostingCalculatorDialog open={costingOpen} onOpenChange={setCostingOpen} orderId={order.id} orderNumber={order.orderNumber} />
 

@@ -175,10 +175,7 @@ export function AddBOMItemDialog({
                   ) : (
                     inventory.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
-                        {f.name}
-                        <span className="text-muted-foreground ml-1 text-xs">
-                          ({f.totalStock} kg total)
-                        </span>
+                        {f.name} ({f.totalStock} kg total)
                       </SelectItem>
                     ))
                   )}
@@ -210,12 +207,7 @@ export function AddBOMItemDialog({
                     ) : (
                       availableColors.map((c) => (
                         <SelectItem key={c.colorId} value={c.colorId}>
-                          <span className="flex items-center gap-2">
-                            <span>{c.colorName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {c.stock} kg · {formatRupiah(c.avgPrice)}/kg
-                            </span>
-                          </span>
+                          {c.colorName} ({c.stock} kg · {formatRupiah(c.avgPrice)}/kg)
                         </SelectItem>
                       ))
                     )}
