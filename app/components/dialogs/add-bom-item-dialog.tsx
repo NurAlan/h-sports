@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/toast/toast-provider";
-import { FABRIC_CATALOG } from "@/lib/master-data";
 import { api, type BomItem } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
 
@@ -67,6 +66,7 @@ export function AddBOMItemDialog({
   // Fetch inventory saat dialog dibuka — API real (stok per FabricColor)
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStockLoading(true);
       api
         .get<InventoryFabric[]>("/api/inventory")
@@ -115,6 +115,7 @@ export function AddBOMItemDialog({
     setLoading(true);
     try {
       const created = await api.post<BomItem>(`/api/orders/${orderId}/bom`, {
+        fabricId,
         fabricColorId: colorId,
         qtyRequired: qtyRequiredNum,
         wastePercentage: wastePct,
