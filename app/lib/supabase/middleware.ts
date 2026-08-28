@@ -36,8 +36,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Route API auth — biarkan
-  if (pathname.startsWith("/api/auth/")) {
+  // Route API auth & callback OAuth — biarkan tanpa proteksi
+  // (/auth/callback dipanggil Supabase dengan code; session belum ada saat itu)
+  if (pathname.startsWith("/api/auth/") || pathname.startsWith("/auth/")) {
     return supabaseResponse;
   }
 
