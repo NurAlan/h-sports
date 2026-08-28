@@ -5,11 +5,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { HelpCircle, Lightbulb } from "lucide-react";
-import { getTutorial, type TutorialData } from "@/lib/tutorial-data";
+import { getTutorial } from "@/lib/tutorial-data";
 
 /** Dialog penjelasan menu + tutorial langkah demi langkah */
 export function MenuGuide({ menuKey }: { menuKey: string }) {
@@ -39,42 +40,44 @@ export function MenuGuide({ menuKey }: { menuKey: string }) {
             <DialogDescription>{tutorial.description}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {tutorial.steps.map((step, i) => (
-              <div
-                key={i}
-                className="flex gap-3 rounded-xl border border-gray-200 bg-white p-3.5"
-              >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                  {i + 1}
+          <DialogBody className="flex flex-col gap-3">
+            <div className="space-y-2">
+              {tutorial.steps.map((step, i) => (
+                <div
+                  key={i}
+                  className="flex gap-2.5 rounded-xl border border-gray-200 bg-white p-3"
+                >
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                    {i + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-foreground">
+                      {step.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {step.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {tutorial.tips.length > 0 && (
-            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 mb-1.5">
-                <Lightbulb className="h-3.5 w-3.5" /> Tips
-              </p>
-              <ul className="space-y-1">
-                {tutorial.tips.map((tip, i) => (
-                  <li key={i} className="text-xs text-amber-800 flex gap-1.5">
-                    <span>•</span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
+              ))}
             </div>
-          )}
+
+            {tutorial.tips.length > 0 && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 mb-1">
+                  <Lightbulb className="h-3 w-3" /> Tips
+                </p>
+                <ul className="space-y-0.5">
+                  {tutorial.tips.map((tip, i) => (
+                    <li key={i} className="text-[11px] text-amber-800 flex gap-1.5">
+                      <span>•</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </>
