@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { MenuGuide } from "@/components/tutorial/menu-guide";
@@ -24,6 +25,7 @@ import {
   ArrowUpDown,
   X,
   Trash2,
+  ShoppingCart,
 } from "lucide-react";
 import { CreateOrderDialog } from "@/components/dialogs/create-order-dialog";
 import { useToast } from "@/components/toast/toast-provider";
@@ -103,18 +105,31 @@ function getDeadlineBadgeClass(days: number, isShipped: boolean) {
 }
 
 export default function OrdersPage() {
+  return (
+    <Suspense>
+      <OrdersInner />
+    </Suspense>
+  );
+}
+
+function OrdersInner() {
   const toast = useToast();
+  const searchParams = useSearchParams();
   const [orderList, setOrderList] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<string>(() => searchParams.get("status") ?? "all");
   const [search, setSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [sortBy, setSortBy] = useState<
     "deadline_asc" | "deadline_desc" | "date_desc" | "date_asc"
-  >("deadline_asc");
+  >(() => {
+    const s = searchParams.get("sortBy");
+    return (s === "deadline_asc" || s === "deadline_desc" || s === "date_desc" || s === "date_asc") ? s : "deadline_asc";
+  });
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     api
@@ -183,11 +198,19 @@ export default function OrdersPage() {
     return acc;
   }, [orderList]);
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setOrderList((prev) => prev.filter((o) => o.id !== deleteTarget.id));
-    toast.success(`Order ${deleteTarget.orderNumber} dihapus`);
-    setDeleteTarget(null);
+    setDeleteLoading(true);
+    try {
+      await api.del(`/api/orders/${deleteTarget.id}`);
+      setOrderList((prev) => prev.filter((o) => o.id !== deleteTarget.id));
+      toast.success(`Order ${deleteTarget.orderNumber} dihapus`);
+      setDeleteTarget(null);
+    } catch (e) {
+      toast.error(`Gagal hapus: ${(e as Error).message}`);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -203,7 +226,7 @@ export default function OrdersPage() {
             placeholder="Cari nama customer / no. order..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-9 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
           {search && (
             <button
@@ -231,7 +254,7 @@ export default function OrdersPage() {
                   | "date_asc"
               )
             }
-            className="h-10 appearance-none rounded-lg border border-gray-300 bg-white pl-8 pr-7 text-xs font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-10 appearance-none rounded-lg border border-gray-300 bg-white pl-8 pr-7 text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="deadline_asc">Deadline ↑</option>
             <option value="deadline_desc">Deadline ↓</option>
@@ -282,7 +305,7 @@ export default function OrdersPage() {
 
       {/* 4. Result count */}
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Menampilkan{" "}
           <span className="font-semibold text-foreground">
             {filteredOrders.length}
@@ -298,7 +321,7 @@ export default function OrdersPage() {
               setStartDate("");
               setEndDate("");
             }}
-            className="text-xs font-medium text-primary hover:underline"
+            className="text-sm font-medium text-primary hover:underline"
           >
             Reset filter
           </button>
@@ -342,7 +365,7 @@ export default function OrdersPage() {
                           {config.label}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {order.customerName}
                       </p>
                     </div>
@@ -393,7 +416,7 @@ export default function OrdersPage() {
                         Profit
                       </p>
                       <p
-                        className={`text-xs font-bold ${
+                        className={`text-sm font-bold ${
                           order.costing?.profit == null
                             ? "text-muted-foreground"
                             : profitColor(order.costing.profit)
@@ -414,7 +437,8 @@ export default function OrdersPage() {
         {filteredOrders.length === 0 && (
           <Card className="bg-white border-gray-300 card-shadow-lg">
             <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
+              <ShoppingCart className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-base text-muted-foreground">
                 {search
                   ? `Tidak ada hasil untuk "${search}"`
                   : "Tidak ada order dengan filter ini"}
@@ -450,7 +474,7 @@ export default function OrdersPage() {
               ({deleteTarget?.customerName}) akan dihapus secara permanen.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-xs text-red-700">
+          <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-sm text-red-700">
             Tindakan ini tidak bisa dibatalkan. Data BOM, timeline, dan costing
             yang terkait juga akan terhapus.
           </div>
@@ -458,6 +482,7 @@ export default function OrdersPage() {
             <Button
               type="button"
               variant="default"
+              disabled={deleteLoading}
               onClick={() => setDeleteTarget(null)}
             >
               Batal
@@ -466,9 +491,15 @@ export default function OrdersPage() {
               type="button"
               variant="outline"
               className="text-red-600 border-red-200 hover:bg-red-50"
+              disabled={deleteLoading}
               onClick={confirmDelete}
             >
-              Ya, Hapus
+              {deleteLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+                  Menghapus...
+                </span>
+              ) : "Ya, Hapus"}
             </Button>
           </DialogFooter>
         </DialogContent>

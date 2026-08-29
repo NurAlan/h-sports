@@ -6,56 +6,59 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Layers,
+  ChevronDown,
+  ChevronRight,
   ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  FileSpreadsheet,
   CheckCircle2,
   Circle,
+  FileSpreadsheet,
+  ClipboardList,
 } from "lucide-react";
 import { api, type ProductionReportData, type ProductionReportOrder } from "@/lib/api";
 import { formatRupiah, formatDate, profitColor, cn } from "@/lib/utils";
+import { ORDER_STATUS } from "@/lib/status-config";
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-gray-100 text-gray-700" },
-  in_production: { label: "Produksi", className: "bg-blue-100 text-blue-700" },
-  qc: { label: "QC", className: "bg-amber-100 text-amber-700" },
-  shipped: { label: "Selesai", className: "bg-green-100 text-green-700" },
-};
+const PAGE_SIZE = 10;
 
 type SortKey = "orderDate" | "customerName" | "revenue" | "profit";
 
-function SortHeader({
-  label,
-  k,
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "orderDate", label: "Tanggal" },
+  { value: "customerName", label: "Customer" },
+  { value: "revenue", label: "Omzet" },
+  { value: "profit", label: "Profit" },
+];
+
+function SortSelect({
   sortKey,
   sortDir,
   onToggle,
 }: {
-  label: string;
-  k: SortKey;
   sortKey: SortKey;
   sortDir: "asc" | "desc";
   onToggle: (k: SortKey) => void;
 }) {
   return (
-    <th
-      className="py-2 pr-3 font-semibold text-muted-foreground cursor-pointer select-none whitespace-nowrap"
-      onClick={() => onToggle(k)}
-    >
-      <span className="inline-flex items-center gap-0.5">
-        {label}
-        {sortKey === k ? (
-          sortDir === "asc" ? (
-            <ArrowUp className="h-3 w-3 text-primary" />
-          ) : (
-            <ArrowDown className="h-3 w-3 text-primary" />
-          )
-        ) : (
-          <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
-        )}
-      </span>
-    </th>
+    <div className="flex items-center gap-1.5">
+      <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+      {SORT_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onToggle(opt.value)}
+          className={cn(
+            "text-[11px] px-2 py-0.5 rounded-md font-medium transition-colors",
+            sortKey === opt.value
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {opt.label}
+          {sortKey === opt.value && (
+            <span className="ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>
+          )}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -72,10 +75,13 @@ export function ProductionReportView({
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("orderDate");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
+    setVisibleCount(PAGE_SIZE);
     api
       .get<ProductionReportData>(
         `/api/reports/produksi?start=${startDate}&end=${endDate}${
@@ -126,10 +132,13 @@ export function ProductionReportView({
     }
   };
 
+  const visibleOrders = sortedOrders.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedOrders.length;
+
   const handleExportCSV = () => {
     const header = [
       "Tanggal", "No Order", "Customer", "Status", "Deadline",
-      "Stage", "On-time", "Omzet", "HPP", "Profit", "Margin %",
+      "Stage", "On-time", "Omzet", "Material", "Upah", "Biaya Lain", "Ongkir", "HPP", "Profit", "Margin %",
     ];
     const rows = sortedOrders.map((o) => [
       o.orderDate,
@@ -140,6 +149,10 @@ export function ProductionReportView({
       `${o.stagesCompleted}/${o.stagesTotal}`,
       o.onTime === null ? "-" : o.onTime ? "Ya" : "Tidak",
       o.revenue,
+      o.materialCost,
+      o.laborCost,
+      o.otherCostTotal,
+      o.shippingCost,
       o.hpp,
       o.profit,
       o.profitMargin.toFixed(1),
@@ -164,14 +177,14 @@ export function ProductionReportView({
       {/* Kain terbanyak dipakai */}
       <Card className="card-shadow-lg bg-white border-gray-300">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
             <Layers className="h-4 w-4 text-violet-500" />
             Kain Terbanyak Dipakai
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2.5">
           {topFabrics.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-2">
+            <p className="text-sm text-muted-foreground text-center py-2">
               Belum ada pemakaian kain di periode ini
             </p>
           ) : (
@@ -186,7 +199,7 @@ export function ProductionReportView({
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{f.name}</p>
+                  <p className="text-base font-medium text-foreground truncate">{f.name}</p>
                   <div className="h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-violet-500"
@@ -194,7 +207,7 @@ export function ProductionReportView({
                     />
                   </div>
                 </div>
-                <p className="text-sm font-semibold text-violet-700 whitespace-nowrap">
+                <p className="text-base font-semibold text-violet-700 whitespace-nowrap">
                   {f.kg.toLocaleString("id-ID")} kg
                 </p>
               </div>
@@ -203,104 +216,187 @@ export function ProductionReportView({
         </CardContent>
       </Card>
 
-      {/* Tabel detail */}
+      {/* Riwayat Order */}
       <Card className="card-shadow-lg bg-white border-gray-300">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Layers className="h-4 w-4 text-primary" />
-            Detail Order
-            <span className="text-[11px] font-normal text-muted-foreground">
-              {orders.length} order • klik header untuk sort
-            </span>
-          </CardTitle>
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" />
+              Riwayat Order
+              <span className="text-[11px] font-normal text-muted-foreground">
+                {sortedOrders.length} order
+              </span>
+            </CardTitle>
+            <SortSelect sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-center text-sm text-muted-foreground py-8">Memuat...</p>
+            <p className="text-center text-base text-muted-foreground py-8">Memuat...</p>
+          ) : sortedOrders.length === 0 ? (
+            <div className="py-8 text-center">
+              <ClipboardList className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Tidak ada order dalam rentang tanggal ini</p>
+            </div>
           ) : (
-            <>
-              <div className="overflow-x-auto -mx-1 px-1">
-                <table className="w-full text-left text-xs min-w-[820px]">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <SortHeader label="Tanggal" k="orderDate" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                      <th className="py-2 pr-3 font-semibold text-muted-foreground">No. Order</th>
-                      <SortHeader label="Customer" k="customerName" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                      <th className="py-2 pr-3 font-semibold text-muted-foreground">Status</th>
-                      <th className="py-2 pr-3 font-semibold text-muted-foreground">Deadline</th>
-                      <th className="py-2 pr-3 font-semibold text-muted-foreground">Stage</th>
-                      <th className="py-2 pr-3 font-semibold text-muted-foreground">On-time</th>
-                      <SortHeader label="Omzet" k="revenue" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                      <SortHeader label="Profit" k="profit" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedOrders.map((o: ProductionReportOrder) => {
-                      const status = statusConfig[o.status] || statusConfig.draft;
-                      return (
-                        <tr key={o.id} className="border-b border-gray-100 last:border-0">
-                          <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
-                            {formatDate(o.orderDate)}
-                          </td>
-                          <td className="py-2.5 pr-3 font-semibold text-foreground whitespace-nowrap">
-                            {o.orderNumber}
-                          </td>
-                          <td className="py-2.5 pr-3 text-muted-foreground max-w-[110px] truncate">
-                            {o.customerName}
-                          </td>
-                          <td className="py-2.5 pr-3 whitespace-nowrap">
-                            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${status.className}`}>
-                              {status.label}
-                            </Badge>
-                          </td>
-                          <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
-                            {o.deadline ? formatDate(o.deadline) : "-"}
-                          </td>
-                          <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
-                            {o.stagesCompleted}/{o.stagesTotal}
-                          </td>
-                          <td className="py-2.5 pr-3 whitespace-nowrap">
-                            {o.onTime === null ? (
-                              <span className="text-muted-foreground">-</span>
-                            ) : o.onTime ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Circle className="h-4 w-4 text-red-500" />
-                            )}
-                          </td>
-                          <td className="py-2.5 pr-3 text-right font-medium whitespace-nowrap">
-                            {formatRupiah(o.revenue)}
-                          </td>
-                          <td
+            <div className="space-y-2">
+              {visibleOrders.map((o: ProductionReportOrder) => {
+                const statusCfg = ORDER_STATUS[o.status] ?? ORDER_STATUS.draft;
+                const isExpanded = expandedId === o.id;
+                const isRugi = o.profit < 0;
+                return (
+                  <div key={o.id}>
+                    {/* Collapsed card — mirrors keuangan layout */}
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : o.id)}
+                      className="w-full flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-100"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <ChevronRight
                             className={cn(
-                              "py-2.5 pr-3 text-right font-semibold whitespace-nowrap",
-                              profitColor(o.profit)
+                              "h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0",
+                              isExpanded && "rotate-90"
                             )}
-                          >
-                            {formatRupiah(o.profit)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {sortedOrders.length === 0 && (
-                      <tr>
-                        <td colSpan={9} className="py-8 text-center text-muted-foreground">
-                          Tidak ada order dalam rentang tanggal ini
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          />
+                          <span className="text-base font-semibold text-foreground truncate">
+                            {o.orderNumber}
+                          </span>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0", statusCfg.className)}>
+                            {statusCfg.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground ml-5">
+                          <span>{formatDate(o.orderDate)}</span>
+                          <span>•</span>
+                          <span className="truncate">{o.customerName}</span>
+                          {o.deadline && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate">Deadline {formatDate(o.deadline)}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base font-bold text-foreground tabular-nums">
+                          {formatRupiah(o.revenue)}
+                        </p>
+                        <p className={cn("text-sm tabular-nums font-medium", isRugi ? "text-red-600" : "text-green-600")}>
+                          {isRugi ? "" : "+"}{formatRupiah(o.profit)}
+                        </p>
+                      </div>
+                    </button>
 
-              <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-                <Button variant="outline" className="flex-1 gap-1.5" onClick={handleExportCSV}>
-                  <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                  Export Excel
-                </Button>
-              </div>
-            </>
+                    {/* Expanded accordion */}
+                    {isExpanded && (
+                      <div className="mx-4 mb-2 mt-1 rounded-xl border border-gray-100 bg-white p-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2.5 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Material Cost</span>
+                            <span className="font-medium">{formatRupiah(o.materialCost)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Upah Jahit</span>
+                            <span className="font-medium">{formatRupiah(o.laborCost)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Ongkos Kirim</span>
+                            <span className="font-medium">{formatRupiah(o.shippingCost)}</span>
+                          </div>
+                          {o.otherCostTotal > 0 && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Biaya Lain</span>
+                                <span className="font-semibold text-primary">{formatRupiah(o.otherCostTotal)}</span>
+                              </div>
+                              {o.otherCosts.map((c, i) => (
+                                <div key={i} className="flex justify-between pl-3 col-span-1">
+                                  <span className="text-muted-foreground">↳ {c.label}</span>
+                                  <span className="font-medium">{formatRupiah(c.amount)}</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          <div className="flex justify-between col-span-2 sm:col-span-3 border-t border-gray-200 pt-2 mt-1">
+                            <span className="font-semibold">HPP (Total)</span>
+                            <span className="font-bold">{formatRupiah(o.hpp)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {o.pricingMethod === "markup" ? `Markup (${o.markupPct ?? 0}%)` : "Profit Tetap"}
+                            </span>
+                            <span className="font-medium text-primary">
+                              {formatRupiah(o.pricingMethod === "markup"
+                                ? o.hpp * ((o.markupPct ?? 0) / 100)
+                                : o.fixedProfit)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Harga Jual</span>
+                            <span className="font-bold text-primary">{formatRupiah(o.revenue)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className={profitColor(o.profit)}>Profit</span>
+                            <span className={cn("font-bold", profitColor(o.profit))}>{formatRupiah(o.profit)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Margin</span>
+                            <span className={cn("font-medium", profitColor(o.profit))}>{o.profitMargin.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Deadline</span>
+                            <span className="font-medium">{o.deadline ? formatDate(o.deadline) : "—"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">On-time</span>
+                            <span className="font-medium">
+                              {o.onTime === null ? (
+                                "—"
+                              ) : o.onTime ? (
+                                <span className="inline-flex items-center gap-1 text-green-600">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Tepat waktu
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-red-500">
+                                  <Circle className="h-3.5 w-3.5" /> Terlambat
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Stage</span>
+                            <span className="font-medium">{o.stagesCompleted}/{o.stagesTotal}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
+
+          {/* Load More */}
+          {hasMore && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <Button
+                variant="outline"
+                className="w-full text-sm text-muted-foreground"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+              >
+                Muat lebih banyak ({sortedOrders.length - visibleCount} tersisa)
+              </Button>
+            </div>
+          )}
+
+          {/* Export */}
+          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+            <Button variant="outline" className="flex-1 gap-1.5" onClick={handleExportCSV}>
+              <FileSpreadsheet className="h-4 w-4 text-green-600" />
+              Export Excel
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
