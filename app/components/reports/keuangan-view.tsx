@@ -8,52 +8,16 @@ import {
   Wallet,
   TrendingUp,
   Percent,
-  ShoppingCart,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
+  Receipt,
   FileSpreadsheet,
 } from "lucide-react";
 import { type Order, type MonthlySummary } from "@/lib/api";
 import { formatRupiah, formatDate, cn } from "@/lib/utils";
+import { ORDER_STATUS } from "@/lib/status-config";
 import { Sparkline } from "@/components/reports/sparkline";
 import { ProfitTrendChart } from "@/components/reports/profit-trend-chart";
 
-type SortKey = "orderDate" | "customerName" | "qtyItems" | "omzet" | "hpp" | "profit" | "margin";
-
-function SortHeader({
-  label,
-  k,
-  sortKey,
-  sortDir,
-  onToggle,
-}: {
-  label: string;
-  k: SortKey;
-  sortKey: SortKey;
-  sortDir: "asc" | "desc";
-  onToggle: (k: SortKey) => void;
-}) {
-  return (
-    <th
-      className="py-2 pr-3 font-semibold text-muted-foreground cursor-pointer select-none whitespace-nowrap"
-      onClick={() => onToggle(k)}
-    >
-      <span className="inline-flex items-center gap-0.5">
-        {label}
-        {sortKey === k ? (
-          sortDir === "asc" ? (
-            <ArrowUp className="h-3 w-3 text-primary" />
-          ) : (
-            <ArrowDown className="h-3 w-3 text-primary" />
-          )
-        ) : (
-          <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
-        )}
-      </span>
-    </th>
-  );
-}
+const PAGE_SIZE = 10;
 
 interface Range {
   start: string;
@@ -73,8 +37,7 @@ export function KeuanganView({
   prevRange: Range;
   statusFilter?: string;
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>("orderDate");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const currOrders = useMemo(
     () =>
@@ -114,51 +77,37 @@ export function KeuanganView({
   const prevSummary = useMemo(() => computeSummary(prevOrders), [prevOrders]);
   const pctChange = (curr: number, prev: number) => (prev > 0 ? ((curr - prev) / prev) * 100 : null);
 
+  // Orders sorted by date desc — newest first
   const sortedOrders = useMemo(() => {
-    const rows = currOrders.map((o) => {
-      const c = o.costing;
-      return { order: o, omzet: c?.sellingPrice ?? null, hpp: c?.hpp ?? null, profit: c?.profit ?? null, margin: c?.profitMargin ?? null };
-    });
-    const dir = sortDir === "asc" ? 1 : -1;
-    rows.sort((a, b) => {
-      let va: number | string;
-      let vb: number | string;
-      switch (sortKey) {
-        case "orderDate": va = a.order.orderDate; vb = b.order.orderDate; break;
-        case "customerName": va = a.order.customerName; vb = b.order.customerName; break;
-        case "qtyItems": va = a.order.qtyItems; vb = b.order.qtyItems; break;
-        case "omzet": va = a.omzet ?? -1; vb = b.omzet ?? -1; break;
-        case "hpp": va = a.hpp ?? -1; vb = b.hpp ?? -1; break;
-        case "profit": va = a.profit ?? -1; vb = b.profit ?? -1; break;
-        case "margin": va = a.margin ?? -1; vb = b.margin ?? -1; break;
-        default: va = a.order.orderDate; vb = b.order.orderDate;
-      }
-      if (typeof va === "string" && typeof vb === "string") return va.localeCompare(vb) * dir;
-      return ((va as number) - (vb as number)) * dir;
-    });
-    return rows;
-  }, [currOrders, sortKey, sortDir]);
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("desc"); }
-  };
+    return [...currOrders]
+      .sort((a, b) => b.orderDate.localeCompare(a.orderDate))
+      .map((o) => ({
+        order: o,
+        omzet: o.costing?.sellingPrice ?? null,
+        profit: o.costing?.profit ?? null,
+      }));
+  }, [currOrders]);
 
   const handleExportCSV = () => {
-    const header = ["Tanggal", "No Order", "Customer", "Qty", "Omzet", "Material", "Upah", "HPP", "Ongkir", "Profit", "Margin %", "Status"];
-    const rows = currOrders.map((o) => {
-      const c = o.costing;
-      return [o.orderDate, o.orderNumber, o.customerName, o.qtyItems, c?.sellingPrice ?? "", c?.materialCost ?? "", c?.laborCost ?? "", c?.hpp ?? "", c?.shippingCost ?? "", c?.profit ?? "", c?.profitMargin?.toFixed(1) ?? "", o.status];
-    });
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const header = ["Tanggal", "No Order", "Customer", "Omzet"];
+    const rows = sortedOrders.map(({ order, omzet }) => [
+      order.orderDate,
+      order.orderNumber,
+      order.customerName,
+      omzet ?? "",
+    ]);
+    const csv = [header, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `laporan-keuangan-${range.start}-${range.end}.csv`;
+    a.download = `pendapatan-${range.start}-${range.end}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const visibleOrders = sortedOrders.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedOrders.length;
 
   const spark = {
     revenue: summaries.map((s) => s.totalRevenue),
@@ -187,11 +136,11 @@ export function KeuanganView({
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon className={`h-4 w-4 ${s.iconColor}`} />
-                    <p className={`text-xs font-medium ${s.iconColor}`}>{s.label}</p>
+                    <p className={`text-sm font-medium ${s.iconColor}`}>{s.label}</p>
                   </div>
                   <Sparkline data={s.spark} color={s.sparkColor} />
                 </div>
-                <p className={`text-lg font-bold truncate ${s.valueColor}`}>
+                <p className={`text-xl font-bold truncate ${s.valueColor}`}>
                   {"isPercent" in s && s.isPercent ? `${s.value.toFixed(1)}%` : formatRupiah(s.value)}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
@@ -206,72 +155,86 @@ export function KeuanganView({
       {/* Tren Profit & Margin */}
       <Card className="card-shadow-lg bg-white border-gray-300">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Tren Profit & Margin (6 bulan)</CardTitle>
+          <CardTitle className="text-lg">Tren Profit & Margin (6 bulan)</CardTitle>
         </CardHeader>
         <CardContent>
           <ProfitTrendChart data={summaries} />
         </CardContent>
       </Card>
 
-      {/* Tabel detail */}
+      {/* Riwayat Pendapatan */}
       <Card className="card-shadow-lg bg-white border-gray-300">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4 text-primary" />
-            Detail Order
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-primary" />
+            Riwayat Pendapatan
             <span className="text-[11px] font-normal text-muted-foreground">
-              {currOrders.length} order • klik header untuk sort
+              {sortedOrders.length} transaksi
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto -mx-1 px-1">
-            <table className="w-full text-left text-xs min-w-[880px]">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <SortHeader label="Tanggal" k="orderDate" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <th className="py-2 pr-3 font-semibold text-muted-foreground">No. Order</th>
-                  <SortHeader label="Customer" k="customerName" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <SortHeader label="Qty" k="qtyItems" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <SortHeader label="Omzet" k="omzet" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <SortHeader label="HPP" k="hpp" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <SortHeader label="Profit" k="profit" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <SortHeader label="Margin" k="margin" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                  <th className="py-2 font-semibold text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedOrders.map(({ order, omzet, hpp, profit, margin }) => {
-                  const status = ({ draft: "bg-gray-100 text-gray-700", in_production: "bg-blue-100 text-blue-700", qc: "bg-amber-100 text-amber-700", shipped: "bg-green-100 text-green-700" } as Record<string, string>)[order.status] || "bg-gray-100 text-gray-700";
-                  const isRugi = (profit ?? 0) < 0;
-                  return (
-                    <tr key={order.id} className={cn("border-b border-gray-100 last:border-0", isRugi && "bg-red-50")}>
-                      <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">{formatDate(order.orderDate)}</td>
-                      <td className="py-2.5 pr-3 font-semibold text-foreground whitespace-nowrap">{order.orderNumber}</td>
-                      <td className="py-2.5 pr-3 text-muted-foreground max-w-[110px] truncate">{order.customerName}</td>
-                      <td className="py-2.5 pr-3 text-right">{order.qtyItems}</td>
-                      <td className="py-2.5 pr-3 text-right font-medium whitespace-nowrap">{omzet !== null ? formatRupiah(omzet) : "-"}</td>
-                      <td className="py-2.5 pr-3 text-right whitespace-nowrap">{hpp !== null ? formatRupiah(hpp) : "-"}</td>
-                      <td className={cn("py-2.5 pr-3 text-right font-semibold whitespace-nowrap", profit === null ? "text-muted-foreground" : profit >= 0 ? "text-green-600" : "text-red-600")}>
-                        {profit !== null ? formatRupiah(profit) : "-"}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right whitespace-nowrap">{margin !== null ? `${margin.toFixed(1)}%` : "-"}</td>
-                      <td className="py-2.5 whitespace-nowrap">
-                        <span className={cn("text-[10px] px-1.5 py-0 rounded-full", status)}>{order.status}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {sortedOrders.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="py-8 text-center text-muted-foreground">Tidak ada order dalam rentang tanggal ini</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {sortedOrders.length === 0 ? (
+            <div className="py-8 text-center">
+              <Receipt className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Tidak ada transaksi dalam rentang tanggal ini</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleOrders.map(({ order, omzet, profit }) => {
+                const statusCfg = ORDER_STATUS[order.status] ?? ORDER_STATUS.draft;
+                const isRugi = (profit ?? 0) < 0;
+                return (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-base font-semibold text-foreground truncate">
+                          {order.orderNumber}
+                        </span>
+                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0", statusCfg.className)}>
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{formatDate(order.orderDate)}</span>
+                        <span>•</span>
+                        <span className="truncate">{order.customerName}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-base font-bold text-foreground tabular-nums">
+                        {omzet !== null ? formatRupiah(omzet) : "—"}
+                      </p>
+                      {profit !== null && (
+                        <p className={cn("text-sm tabular-nums font-medium", isRugi ? "text-red-600" : "text-green-600")}>
+                          {isRugi ? "" : "+"}{formatRupiah(profit)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+          {/* Load More */}
+          {hasMore && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <Button
+                variant="outline"
+                className="w-full text-sm text-muted-foreground"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+              >
+                Muat lebih banyak ({sortedOrders.length - visibleCount} tersisa)
+              </Button>
+            </div>
+          )}
+
+          {/* Export */}
+          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
             <Button variant="outline" className="flex-1 gap-1.5" onClick={handleExportCSV}>
               <FileSpreadsheet className="h-4 w-4 text-green-600" /> Export Excel
             </Button>

@@ -48,39 +48,53 @@ function DialogOverlay({
   )
 }
 
+export interface DialogContentProps extends DialogPrimitive.DialogContentProps {
+  centered?: boolean;
+}
+
 function DialogContent({
   className,
   children,
+  centered = false,
   ...props
-}: DialogPrimitive.DialogContentProps) {
+}: DialogContentProps) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          // Posisi tengah layar
-          "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-          // Lebar — mobile penuh dengan margin 16px kiri-kanan
-          "w-[calc(100vw-2rem)] sm:max-w-[448px]",
-          // Struktur: flex column supaya header/body/footer terpisah rapi
-          "flex flex-col overflow-hidden",
-          // Visual floating — rounded besar, shadow dalam, bg putih
-          "rounded-2xl bg-white",
-          "border border-gray-100",
-          "shadow-[0_32px_64px_-12px_rgba(0,0,0,0.22),0_12px_32px_-8px_rgba(0,0,0,0.14),0_0_0_1px_rgba(0,0,0,0.04)]",
-          // Animasi masuk dari bawah
-          "duration-200",
-          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-bottom-6",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-bottom-4",
+          "fixed z-50 flex flex-col bg-white overflow-hidden transition-all duration-200",
+          centered
+            ? [
+                // Mobile & Desktop: Centered modal with safe viewport margins
+                "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                "w-[calc(100vw-1.5rem)] max-w-[500px] max-h-[85dvh] rounded-2xl border border-gray-200",
+                "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+              ]
+            : [
+                // Mobile: Bottom sheet
+                "max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:w-full max-sm:max-h-[88dvh] max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:border-t max-sm:border-x-0 max-sm:border-b-0",
+                // Desktop: Centered modal
+                "sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-[480px] sm:max-h-[85vh] sm:rounded-2xl sm:border border-gray-200",
+                // Animasi masuk
+                "data-[state=open]:animate-in data-[state=open]:fade-in-0 max-sm:data-[state=open]:slide-in-from-bottom-8 sm:data-[state=open]:zoom-in-95 sm:data-[state=open]:slide-in-from-bottom-2",
+                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 max-sm:data-[state=closed]:slide-out-to-bottom-8 sm:data-[state=closed]:zoom-out-95",
+              ],
+          "shadow-[0_32px_64px_-12px_oklch(0.4_0.02_260/0.20),0_12px_32px_-8px_oklch(0.4_0.02_260/0.12)]",
           className
         )}
         {...props}
       >
+        {/* Visual drag handle indicator for mobile only if bottom sheet */}
+        {!centered && (
+          <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-gray-300 sm:hidden" />
+        )}
         {children}
-        {/* Tombol close — circle abu pojok kanan atas */}
-        <DialogPrimitive.Close className="absolute right-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-all hover:bg-gray-200 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-          <XIcon className="h-3.5 w-3.5" />
+        {/* Tombol close */}
+        <DialogPrimitive.Close className="absolute right-3.5 top-3.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-all duration-150 hover:bg-gray-200 hover:text-foreground active:scale-90 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
+          <XIcon className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
@@ -96,8 +110,7 @@ function DialogHeader({
     <div
       data-slot="dialog-header"
       className={cn(
-        // Padding cukup — tidak mepet ke tepi
-        "flex flex-col gap-1 px-5 pt-5 pb-4 pr-12",
+        "flex flex-col gap-1 px-5 pt-4 pb-3 pr-12 shrink-0",
         className
       )}
       {...props}
@@ -114,8 +127,7 @@ function DialogBody({
     <div
       data-slot="dialog-body"
       className={cn(
-        // Padding horizontal + vertical yang cukup, tidak mepet
-        "flex-1 overflow-y-auto px-5 pb-5",
+        "flex-1 overflow-y-auto px-5 pb-5 overscroll-contain",
         className
       )}
       {...props}
@@ -131,9 +143,8 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        // Footer: tombol kiri-kanan (justify-between) dengan border atas
-        "flex flex-row items-center justify-end gap-2.5",
-        "border-t border-gray-100 bg-gray-50/70 px-5 py-3.5",
+        "sticky bottom-0 z-10 flex flex-row items-center justify-end gap-2.5 shrink-0",
+        "border-t border-gray-100 bg-white/95 backdrop-blur-sm px-5 py-3.5 safe-area-bottom",
         className
       )}
       {...props}
@@ -149,7 +160,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "text-base font-semibold leading-tight tracking-tight text-foreground",
+        "text-lg font-semibold leading-tight tracking-tight text-foreground",
         className
       )}
       {...props}
@@ -164,7 +175,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-xs text-muted-foreground leading-relaxed mt-0.5", className)}
+      className={cn("text-sm text-muted-foreground leading-relaxed mt-0.5", className)}
       {...props}
     />
   )

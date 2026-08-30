@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background pill -->
+  <rect width="32" height="32" rx="8" fill="oklch(0.54 0.17 255)"/>
+  <!-- H letter -->
+  <text x="5" y="23" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="white">H</text>
+  <!-- Sport dot accent -->
+  <circle cx="26" cy="9" r="3" fill="white" opacity="0.85"/>
+</svg>

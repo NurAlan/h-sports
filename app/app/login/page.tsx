@@ -84,8 +84,8 @@ function LoginForm() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg mb-4">
             <Shirt className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">H-Sport</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-foreground">H-Sport</h1>
+          <p className="text-base text-muted-foreground mt-1">
             Textile Production Management
           </p>
         </div>
@@ -143,7 +143,7 @@ function LoginForm() {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200" />
             </div>
-            <div className="relative flex justify-center text-xs">
+            <div className="relative flex justify-center text-sm">
               <span className="bg-white px-2 text-muted-foreground">atau</span>
             </div>
           </div>
@@ -153,7 +153,7 @@ function LoginForm() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-gray-50 disabled:opacity-60 transition-colors"
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base font-medium text-foreground shadow-sm hover:bg-gray-50 disabled:opacity-60 transition-colors"
             title="Hanya berfungsi dari localhost (buka di Mac, bukan dari HP)"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -177,13 +177,13 @@ function LoginForm() {
             Sign in with Google
           </button>
           {googleLoading && (
-            <p className="text-center text-xs text-muted-foreground mt-2">
+            <p className="text-center text-sm text-muted-foreground mt-2">
               Mengarahkan ke Google...
             </p>
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Login menggunakan email yang telah terdaftar oleh admin.
         </p>
       </div>

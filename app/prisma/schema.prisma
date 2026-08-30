@@ -165,7 +165,8 @@ model OrderCosting {
   materialCost  Float    @map("material_cost")
   laborCost     Float    @default(0) @map("labor_cost")
   shippingCost  Float    @default(0) @map("shipping_cost")
-  hpp           Float    // material + labor
+  otherCostTotal Float   @default(0) @map("other_cost_total")
+  hpp           Float    // material + labor + shipping + other
   pricingMethod String   @map("pricing_method") // "markup" | "fixed_profit"
   markupPct     Float?   @map("markup_pct")
   fixedProfit   Float    @default(0) @map("fixed_profit")
@@ -175,9 +176,25 @@ model OrderCosting {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  costItems  OrderCostItem[]
 
   @@map("order_costing")
+}
+
+// === 7b. BIAYA LAIN PER ORDER (sablon, resleting, aksesoris, dll) ===
+model OrderCostItem {
+  id          String  @id @default(cuid())
+  orderId     String  @map("order_id")
+  label       String
+  amount      Float
+  keterangan  String? @map("keterangan")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  costing OrderCosting @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_cost_items")
 }
 
 // === 8. PEMAKAIAN BATCH (FIFO log per FabricColor) ===

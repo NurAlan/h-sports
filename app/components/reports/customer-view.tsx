@@ -41,7 +41,7 @@ export function CustomerView({ orders, range, statusFilter = "all" }: { orders: 
   return (
     <Card className="card-shadow-lg bg-white border-gray-300">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="text-lg flex items-center gap-2">
           <Trophy className="h-4 w-4 text-amber-500" />
           Customer Berdasarkan Profit
           <span className="text-[11px] font-normal text-muted-foreground">
@@ -51,7 +51,7 @@ export function CustomerView({ orders, range, statusFilter = "all" }: { orders: 
       </CardHeader>
       <CardContent className="space-y-2.5">
         {customers.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-2">
+          <p className="text-sm text-muted-foreground text-center py-2">
             Belum ada data di periode ini
           </p>
         ) : (
@@ -67,8 +67,8 @@ export function CustomerView({ orders, range, statusFilter = "all" }: { orders: 
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground truncate">{c.name}</p>
-                  <p className={`text-sm font-semibold ${profitColor(c.profit)} whitespace-nowrap`}>
+                  <p className="text-base font-medium text-foreground truncate">{c.name}</p>
+                  <p className={`text-base font-semibold ${profitColor(c.profit)} whitespace-nowrap`}>
                     {formatRupiah(c.profit)}
                   </p>
                 </div>

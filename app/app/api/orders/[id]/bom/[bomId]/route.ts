@@ -18,6 +18,20 @@ export async function PATCH(request: Request, { params }: Params) {
   const body = await request.json();
   const { qtyRequired, wastePercentage } = body;
 
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  if (!order) {
+    return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
+  }
+  if (order.status !== "draft") {
+    return NextResponse.json(
+      { error: "Order sudah memasuki produksi — BOM tidak bisa diubah." },
+      { status: 403 }
+    );
+  }
+
   const item = await prisma.bomItem.findFirst({ where: { id: bomId, orderId: id } });
   if (!item) {
     return NextResponse.json({ error: "Bahan tidak ditemukan" }, { status: 404 });
@@ -45,6 +59,20 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (error) return error;
 
   const { id, bomId } = await params;
+
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  if (!order) {
+    return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
+  }
+  if (order.status !== "draft") {
+    return NextResponse.json(
+      { error: "Order sudah memasuki produksi — BOM tidak bisa diubah." },
+      { status: 403 }
+    );
+  }
 
   const item = await prisma.bomItem.findFirst({ where: { id: bomId, orderId: id } });
   if (!item) {

@@ -47,7 +47,7 @@ export default function ProductionReportPage() {
     <div className="container max-w-lg mx-auto px-4 py-6">
       <Link
         href="/reports"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mb-4"
+        className="inline-flex items-center gap-1.5 text-base font-medium text-primary hover:underline mb-4"
       >
         <ArrowLeft className="h-4 w-4" /> Kembali ke Laporan
       </Link>

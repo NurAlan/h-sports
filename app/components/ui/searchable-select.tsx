@@ -75,7 +75,7 @@ export function SearchableSelect<T>({
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          className="w-full h-10 px-3 py-2 text-left bg-white border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+          className="w-full h-10 px-3 py-2 text-left bg-white border border-border rounded-md text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-ring disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
         >
           <span className={selectedLabel ? "text-foreground" : "text-muted-foreground"}>
             {selectedLabel || placeholder}
@@ -112,7 +112,7 @@ export function SearchableSelect<T>({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={placeholder}
-                  className="flex-1 bg-transparent text-sm focus:outline-none"
+                  className="flex-1 bg-transparent text-base focus:outline-none"
                   autoFocus
                 />
               </div>
@@ -120,7 +120,7 @@ export function SearchableSelect<T>({
               {/* Items list */}
               <div className="overflow-y-auto flex-1">
                 {filteredItems.length === 0 ? (
-                  <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                  <div className="px-3 py-4 text-center text-base text-muted-foreground">
                     Tidak ditemukan
                   </div>
                 ) : (
@@ -132,7 +132,7 @@ export function SearchableSelect<T>({
                         key={itemValue}
                         type="button"
                         onClick={() => handleSelect(itemValue)}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 transition-colors ${
+                        className={`w-full px-3 py-2 text-left text-base hover:bg-gray-100 transition-colors ${
                           isSelected ? "bg-primary/10 text-primary font-medium" : "text-foreground"
                         }`}
                       >

@@ -19,10 +19,10 @@ export function StockDonut({ data }: StockDonutProps) {
         <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mb-2.5">
           <PieIcon className="h-5 w-5 text-gray-400" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground mb-1">
+        <p className="text-base font-medium text-muted-foreground mb-1">
           Belum ada stok kain
         </p>
-        <p className="text-xs text-muted-foreground/70 leading-relaxed">
+        <p className="text-sm text-muted-foreground/70 leading-relaxed">
           Komposisi stok akan muncul setelah ada pembelian kain
         </p>
       </div>
@@ -54,7 +54,7 @@ export function StockDonut({ data }: StockDonutProps) {
         {data.map((d, i) => {
           const pct = total > 0 ? (d.value / total) * 100 : 0;
           return (
-            <div key={d.name} className="flex items-center gap-2 text-xs">
+            <div key={d.name} className="flex items-center gap-2 text-sm">
               <span
                 className="h-2.5 w-2.5 rounded-full shrink-0"
                 style={{ background: COLORS[i % COLORS.length] }}

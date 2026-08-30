@@ -107,7 +107,7 @@ export function AddFabricPurchaseDialog({
             Input data pembelian kain baru untuk menambah stok
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <DialogBody>
           <div className="grid gap-4">
 
@@ -116,7 +116,7 @@ export function AddFabricPurchaseDialog({
               <Label htmlFor="fabric">Jenis Kain *</Label>
               {initialFabricId && selectedFabric ? (
                 <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-base font-medium text-foreground">
                     {selectedFabric.name}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
@@ -140,7 +140,7 @@ export function AddFabricPurchaseDialog({
               <Label htmlFor="color">Warna *</Label>
               {initialColorName ? (
                 <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-base font-medium text-foreground">
                     {initialColorName}
                   </span>
                   <span className="text-[11px] text-muted-foreground">

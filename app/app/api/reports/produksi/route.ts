@@ -27,7 +27,10 @@ export async function GET(request: Request) {
     prisma.order.findMany({
       where,
       orderBy: { orderDate: "desc" },
-      include: { costing: true, timelines: true },
+      include: {
+        costing: { include: { costItems: { select: { label: true, amount: true, keterangan: true } } } },
+        timelines: true,
+      },
     }),
     // Top kain terbanyak dipakai (agregat BomItem dalam rentang tanggal)
     prisma.bomItem.findMany({
@@ -77,6 +80,14 @@ export async function GET(request: Request) {
       onTime,
       stagesTotal,
       stagesCompleted,
+      materialCost: c?.materialCost ?? 0,
+      laborCost: c?.laborCost ?? 0,
+      shippingCost: c?.shippingCost ?? 0,
+      otherCostTotal: c?.otherCostTotal ?? 0,
+      otherCosts: c?.costItems ?? [],
+      pricingMethod: c?.pricingMethod ?? "markup",
+      markupPct: c?.markupPct ?? null,
+      fixedProfit: c?.fixedProfit ?? 0,
     };
   });
 
@@ -115,22 +126,19 @@ export async function GET(request: Request) {
     .sort((a, b) => b.kg - a.kg)
     .slice(0, 5);
 
-  return NextResponse.json(
-    {
-      summary: {
-        totalOrders: rows.length,
-        pipeline,
-        qcPending,
-        onTimeCount,
-        onTimeRate,
-        revenue: Math.round(revenue),
-        hpp: Math.round(hpp),
-        profit: Math.round(profit),
-        margin,
-      },
-      orders: rows,
-      topFabrics,
+  return NextResponse.json({
+    summary: {
+      totalOrders: rows.length,
+      pipeline,
+      qcPending,
+      onTimeCount,
+      onTimeRate,
+      revenue: Math.round(revenue),
+      hpp: Math.round(hpp),
+      profit: Math.round(profit),
+      margin,
     },
-    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=300" } }
-  );
+    orders: rows,
+    topFabrics,
+  });
 }

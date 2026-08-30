@@ -223,17 +223,17 @@ function OrdersInner() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="Cari nama customer / no. order..."
+            placeholder="Cari customer / no. order..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-9 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-11 md:h-10 w-full rounded-xl border border-gray-300 bg-white pl-9 pr-9 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 shadow-xs"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
               aria-label="Bersihkan pencarian"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:scale-90"
             >
               <X className="h-4 w-4" />
             </button>
@@ -254,7 +254,7 @@ function OrdersInner() {
                   | "date_asc"
               )
             }
-            className="h-10 appearance-none rounded-lg border border-gray-300 bg-white pl-8 pr-7 text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-11 md:h-10 appearance-none rounded-xl border border-gray-300 bg-white pl-8 pr-7 text-base md:text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 shadow-xs"
           >
             <option value="deadline_asc">Deadline ↑</option>
             <option value="deadline_desc">Deadline ↓</option>

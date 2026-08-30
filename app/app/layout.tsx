@@ -1,17 +1,39 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import { BottomNavWrapper } from "@/components/bottom-nav-wrapper";
 import { ToastProvider } from "@/components/toast/toast-provider";
 
-const inter = Inter({
+const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "H-Sport — Textile Production Management",
-  description: "Inventory, costing, and production tracking for textile manufacturing",
+  title: "H-Sport — Manajemen Produksi Tekstil",
+  description: "Inventaris, costing, dan pelacakan produksi untuk manufaktur tekstil",
+  openGraph: {
+    title: "H-Sport",
+    description: "Manajemen produksi tekstil — inventaris, costing, dan pelacakan order",
+    type: "website",
+    locale: "id_ID",
+    siteName: "H-Sport",
+  },
+  twitter: {
+    card: "summary",
+    title: "H-Sport",
+    description: "Manajemen produksi tekstil",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f7f4" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -20,15 +42,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={inter.variable}>
-      <body className="antialiased bg-background text-foreground">
+    <html lang="id" className={outfit.variable}>
+      <body className="antialiased bg-background text-foreground font-sans">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-base focus:font-medium focus:text-primary-foreground focus:shadow-lg focus:outline-none"
+        >
+          Lewati ke konten
+        </a>
         <ToastProvider>
-          {/* Main content dengan padding bottom untuk bottom nav */}
-          <main className="pb-20 min-h-screen bg-gray-50">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="pb-28 min-h-dvh bg-muted/40 outline-none"
+          >
             {children}
           </main>
-
-          {/* Bottom Navigation (fixed) — disembunyikan di /login */}
           <BottomNavWrapper />
         </ToastProvider>
       </body>

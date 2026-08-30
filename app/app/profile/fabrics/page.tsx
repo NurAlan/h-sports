@@ -129,7 +129,7 @@ export default function FabricsPage() {
     <div className="container max-w-lg mx-auto px-4 py-6">
       <Link
         href="/profile"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mb-4"
+        className="inline-flex items-center gap-1.5 text-base font-medium text-primary hover:underline mb-4"
       >
         <ArrowLeft className="h-4 w-4" /> Kembali ke Profile
       </Link>
@@ -152,7 +152,7 @@ export default function FabricsPage() {
           placeholder="Cari jenis kain..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </div>
 
@@ -175,7 +175,7 @@ export default function FabricsPage() {
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
+                    <p className="text-base font-semibold text-foreground truncate">
                       {fabric.name}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
@@ -209,10 +209,10 @@ export default function FabricsPage() {
         {filtered.length === 0 && (
           <Card className="bg-white border-gray-300 card-shadow-lg">
             <CardContent className="py-10 text-center">
-              <p className="text-sm font-medium text-foreground mb-1">
+              <p className="text-base font-medium text-foreground mb-1">
                 Kain tidak ditemukan
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Tidak ada hasil untuk "{search}"
               </p>
             </CardContent>
@@ -286,7 +286,7 @@ export default function FabricsPage() {
               akan dihapus dari master data secara permanen.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-xs text-red-700">
+          <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-sm text-red-700">
             Tindakan ini tidak bisa dibatalkan. Kain yang sudah dipakai di
             pembelian atau BOM tidak bisa dihapus.
           </div>

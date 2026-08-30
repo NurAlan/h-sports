@@ -1,16 +1,16 @@
 import { cn } from "@/lib/utils";
 
-/** Skeleton dasar — animate-pulse, netral (abu-abu) */
+/** Skeleton dasar — animate-pulse, netral */
 export function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("animate-pulse rounded-lg bg-gray-200", className)} />
+    <div className={cn("animate-pulse rounded-lg bg-muted", className)} />
   );
 }
 
 /** Skeleton card order (list orders, production) */
 export function OrderCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 card-shadow">
+    <div className="rounded-xl border border-border bg-card p-4 card-shadow">
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex-1 min-w-0 space-y-1.5">
           <Skeleton className="h-4 w-32" />
@@ -23,7 +23,7 @@ export function OrderCardSkeleton() {
         <Skeleton className="h-3 w-full" />
         <Skeleton className="h-3 w-3/4" />
       </div>
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+      <div className="flex items-center justify-between pt-2 border-t border-border">
         <Skeleton className="h-3 w-28" />
         <Skeleton className="h-3 w-16" />
       </div>
@@ -34,7 +34,7 @@ export function OrderCardSkeleton() {
 /** Skeleton card fabric (grid inventory 2 kolom) */
 export function FabricCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 h-full card-shadow">
+    <div className="rounded-xl border border-border bg-card p-4 h-full card-shadow">
       <div className="flex items-start justify-between mb-2">
         <Skeleton className="h-3.5 w-20" />
         <Skeleton className="h-3.5 w-3.5 rounded-full" />
@@ -52,7 +52,7 @@ export function FabricCardSkeleton() {
 /** Skeleton stat card (dashboard) */
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 card-shadow">
+    <div className="rounded-xl border border-border bg-card p-4 card-shadow">
       <div className="flex items-center gap-1.5 mb-2">
         <Skeleton className="h-4 w-4 rounded-full" />
         <Skeleton className="h-3 w-16" />
@@ -66,7 +66,7 @@ export function StatCardSkeleton() {
 /** Skeleton chart card (dashboard/reports) */
 export function ChartCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 card-shadow">
+    <div className="rounded-xl border border-border bg-card p-4 card-shadow">
       <Skeleton className="h-4 w-28 mb-3" />
       <Skeleton className="h-40 w-full" />
     </div>
@@ -76,7 +76,7 @@ export function ChartCardSkeleton() {
 /** Skeleton row item (profile fabrics, list sederhana) */
 export function ListItemSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 card-shadow">
+    <div className="rounded-xl border border-border bg-card px-4 py-3.5 card-shadow">
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 space-y-1.5">
           <Skeleton className="h-3.5 w-32" />

@@ -82,7 +82,7 @@ export default function ReportsHubPage() {
       <PageHeader title="Laporan" subtitle="Profit, produksi & customer" action={<MenuGuide menuKey="reports" />} />
 
       {loading ? (
-        <p className="text-center text-sm text-muted-foreground py-8">Memuat...</p>
+        <p className="text-center text-base text-muted-foreground py-8">Memuat...</p>
       ) : (
         <>
           <div className="mb-4">
@@ -117,9 +117,9 @@ export default function ReportsHubPage() {
                   type="button"
                   onClick={() => setTab(t.key)}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-colors",
+                    "flex-1 flex items-center justify-center gap-1.5 rounded-xl border py-2.5 min-h-[44px] text-sm font-semibold transition-all duration-150 active:scale-95 shadow-xs",
                     active
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
                       : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50"
                   )}
                 >

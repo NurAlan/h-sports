@@ -29,6 +29,7 @@ interface AddBOMItemDialogProps {
   onOpenChange: (open: boolean) => void;
   orderId: string;
   orderNumber: string;
+  existingColorIds?: string[];
   onAdded?: (item: BomItem) => void;
 }
 
@@ -52,6 +53,7 @@ export function AddBOMItemDialog({
   onOpenChange,
   orderId,
   orderNumber,
+  existingColorIds,
   onAdded,
 }: AddBOMItemDialogProps) {
   const [fabricId, setFabricId] = useState("");
@@ -102,6 +104,7 @@ export function AddBOMItemDialog({
   const qtyActual = qtyRequiredNum * (1 + wastePct / 100);
   const materialCost = qtyActual * (selectedColor?.avgPrice ?? 0);
   const isStockEnough = selectedColor ? selectedColor.stock >= qtyActual : false;
+  const isDuplicate = !!colorId && (existingColorIds ?? []).includes(colorId);
 
   const handleFabricChange = (val: string) => {
     setFabricId(val);
@@ -111,6 +114,10 @@ export function AddBOMItemDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fabricId || !colorId || qtyRequiredNum <= 0) return;
+    if (isDuplicate) {
+      toast.error("Bahan dan warna ini sudah ada — gunakan Edit untuk mengubah jumlahnya");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -144,7 +151,7 @@ export function AddBOMItemDialog({
             Order <b>{orderNumber}</b> — Pilih kain, warna, dan qty bersih.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <DialogBody>
           <div className="grid gap-4">
             {/* Step 1 — Pilih Kain */}
@@ -194,16 +201,23 @@ export function AddBOMItemDialog({
                 {/* Info warna terpilih */}
                 {selectedColor && (
                   <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-1">
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Stok tersedia</span>
                       <span className={isStockEnough ? "text-green-600 font-medium" : "text-red-600 font-semibold"}>
                         {selectedColor.stock} kg
                       </span>
                     </div>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Harga rata-rata</span>
                       <span>{formatRupiah(selectedColor.avgPrice)}/kg</span>
                     </div>
+                  </div>
+                )}
+                {isDuplicate && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-300 px-3 py-2.5">
+                    <p className="text-sm font-medium text-amber-800">
+                      ⚠️ Bahan &amp; warna ini sudah ada di BOM — gunakan <b>Edit</b> untuk mengubah jumlahnya.
+                    </p>
                   </div>
                 )}
               </div>
@@ -246,20 +260,20 @@ export function AddBOMItemDialog({
 
                 {qtyRequiredNum > 0 && (
                   <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-1">
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Qty actual (+ waste)</span>
                       <span className="font-medium">{qtyActual.toFixed(2)} kg</span>
                     </div>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Harga rata-rata</span>
                       <span>{formatRupiah(selectedColor?.avgPrice ?? 0)}/kg</span>
                     </div>
-                    <div className="flex justify-between text-sm pt-1 border-t border-gray-200">
+                    <div className="flex justify-between text-base pt-1 border-t border-gray-200">
                       <span className="font-semibold">Estimasi Biaya</span>
                       <span className="font-bold text-primary">{formatRupiah(materialCost)}</span>
                     </div>
                     {!isStockEnough && (
-                      <p className="text-xs text-red-600 font-medium">
+                      <p className="text-sm text-red-600 font-medium">
                         ⚠️ Stok tidak cukup ({selectedColor?.stock} kg tersedia)
                       </p>
                     )}
@@ -274,7 +288,7 @@ export function AddBOMItemDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Batal
             </Button>
-            <Button type="submit" disabled={!fabricId || !colorId || qtyRequiredNum <= 0 || loading}>
+            <Button type="submit" disabled={!fabricId || !colorId || qtyRequiredNum <= 0 || loading || isDuplicate}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

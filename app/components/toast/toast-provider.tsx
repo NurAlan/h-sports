@@ -59,7 +59,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     (type: ToastType, message: string) => {
       const id = ++idRef.current;
       setToasts((prev) => [...prev.slice(-2), { id, type, message }]);
-      setTimeout(() => dismiss(id), 3000);
+      // Errors linger longer so the user has time to read them
+      setTimeout(() => dismiss(id), type === "error" ? 5000 : 3000);
     },
     [dismiss]
   );
@@ -86,7 +87,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`pointer-events-auto flex items-center gap-2.5 rounded-xl border bg-white px-3.5 py-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 ${BORDER[t.type]}`}
           >
             {ICONS[t.type]}
-            <p className="flex-1 text-sm font-medium text-foreground">
+            <p className="flex-1 text-base font-medium text-foreground">
               {t.message}
             </p>
             <button

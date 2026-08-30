@@ -39,19 +39,43 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    // Ambil timeline yang ada untuk preserve start/end date jika tidak dikirim ulang
+    const existing = await tx.productionTimeline.findMany({ where: { orderId: id } });
+    const existingMap = new Map(existing.map((t) => [t.stageName, t]));
+
     // Hapus timeline lama, lalu buat ulang (replace pattern)
     await tx.productionTimeline.deleteMany({ where: { orderId: id } });
 
     const created = [];
     for (const s of stages) {
+      const prev = existingMap.get(s.stageName);
+
+      let actualStart: Date | null = null;
+      if (s.actualStart) {
+        actualStart = new Date(s.actualStart);
+      } else if (prev?.actualStart) {
+        actualStart = prev.actualStart;
+      } else if (s.status === "in_progress" || s.status === "completed") {
+        actualStart = new Date();
+      }
+
+      let actualEnd: Date | null = null;
+      if (s.actualEnd) {
+        actualEnd = new Date(s.actualEnd);
+      } else if (prev?.actualEnd) {
+        actualEnd = prev.actualEnd;
+      } else if (s.status === "completed") {
+        actualEnd = new Date();
+      }
+
       const item = await tx.productionTimeline.create({
         data: {
           orderId: id,
           stageName: s.stageName,
           status: s.status,
-          estimatedHrs: s.estimatedHrs,
-          ...(s.status === "in_progress" ? { actualStart: new Date() } : {}),
-          ...(s.status === "completed" ? { actualEnd: new Date() } : {}),
+          estimatedHrs: s.estimatedHrs != null ? Number(s.estimatedHrs) : null,
+          actualStart,
+          actualEnd,
         },
       });
       created.push(item);

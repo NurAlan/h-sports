@@ -19,7 +19,7 @@ export function FAB({ onClick, label = "Add", className, hidden = false }: FABPr
     <Button
       onClick={onClick}
       className={cn(
-        "fixed bottom-24 right-6 z-[100] h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all",
+        "fixed bottom-24 right-6 z-[100] h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 active:scale-90",
         "bg-primary text-primary-foreground",
         className
       )}

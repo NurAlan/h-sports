@@ -54,6 +54,35 @@ export async function POST(request: Request, { params }: Params) {
     );
   }
 
+  // BOM hanya bisa diubah saat order masih draft
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  if (!order) {
+    return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
+  }
+  if (order.status !== "draft") {
+    return NextResponse.json(
+      { error: "Order sudah memasuki produksi — BOM tidak bisa diubah. Kembalikan status ke Draft untuk mengubah bahan." },
+      { status: 403 }
+    );
+  }
+
+  // Cek duplikat: bahan & warna yang sama cukup diedit, bukan ditambah
+  const existing = await prisma.bomItem.findUnique({
+    where: { orderId_fabricColorId: { orderId: id, fabricColorId } },
+    select: { fabricColor: { select: { colorName: true, fabric: { select: { name: true } } } } },
+  });
+  if (existing) {
+    return NextResponse.json(
+      {
+        error: `Bahan ${existing.fabricColor.fabric.name} — ${existing.fabricColor.colorName} sudah ada di BOM. Gunakan Edit untuk mengubah jumlahnya.`,
+      },
+      { status: 409 }
+    );
+  }
+
   // Cek FabricColor ada
   const fabricColor = await prisma.fabricColor.findUnique({
     where: { id: fabricColorId },

@@ -26,7 +26,7 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg text-xs">
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg text-sm">
       <p className="font-bold text-foreground mb-1">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name} className="flex items-center gap-1.5 text-muted-foreground">
@@ -59,10 +59,10 @@ export function ComparisonBarChart({ data }: { data: MonthlySummary[] }) {
         <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mb-2.5">
           <BarChart3 className="h-5 w-5 text-gray-400" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground mb-1">
+        <p className="text-base font-medium text-muted-foreground mb-1">
           Belum ada data omzet
         </p>
-        <p className="text-xs text-muted-foreground/70 leading-relaxed">
+        <p className="text-sm text-muted-foreground/70 leading-relaxed">
           Grafik akan muncul setelah order memiliki data costing
         </p>
       </div>

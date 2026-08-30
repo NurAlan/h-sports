@@ -72,7 +72,7 @@ export function DateRangeFilter({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "flex items-center gap-2 w-full rounded-lg border bg-white text-left transition-colors",
-          compact ? "h-9 px-3 text-xs" : "h-10 px-3 text-sm",
+          compact ? "h-9 px-3 text-sm" : "h-10 px-3 text-base",
           hasValue ? "border-primary text-foreground" : "border-gray-300 text-muted-foreground"
         )}
       >
@@ -109,7 +109,7 @@ export function DateRangeFilter({
                       type="button"
                       onClick={() => pickPreset(p)}
                       className={cn(
-                        "rounded-full px-3 py-1.5 text-xs font-medium border transition-colors",
+                        "rounded-full px-3 py-1.5 text-sm font-medium border transition-colors",
                         active
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50"
@@ -132,11 +132,11 @@ export function DateRangeFilter({
                   onChange={(e) => onStartChange(e.target.value)}
                   className={cn(
                     "w-full rounded-lg border border-gray-300 bg-white px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                    compact ? "h-8 text-xs" : "h-9 text-sm"
+                    compact ? "h-8 text-sm" : "h-9 text-base"
                   )}
                 />
               </div>
-              <span className={cn("hidden sm:block text-muted-foreground", compact ? "text-[11px] pb-2" : "text-xs pb-2.5")}>
+              <span className={cn("hidden sm:block text-muted-foreground", compact ? "text-[11px] pb-2" : "text-sm pb-2.5")}>
                 s/d
               </span>
               <div className="flex-1 min-w-0">
@@ -148,7 +148,7 @@ export function DateRangeFilter({
                   onChange={(e) => onEndChange(e.target.value)}
                   className={cn(
                     "w-full rounded-lg border border-gray-300 bg-white px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                    compact ? "h-8 text-xs" : "h-9 text-sm"
+                    compact ? "h-8 text-sm" : "h-9 text-base"
                   )}
                 />
               </div>
@@ -172,7 +172,7 @@ export function DateRangeFilter({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
               >
                 Selesai
               </button>

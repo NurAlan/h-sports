@@ -26,10 +26,7 @@ export async function GET(request: Request) {
     orderBy: { orderDate: "desc" },
     include: { costing: true },
   });
-  return NextResponse.json(
-    orders,
-    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=300" } }
-  );
+  return NextResponse.json(orders);
 }
 
 /** POST /api/orders — buat order baru */

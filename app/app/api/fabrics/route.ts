@@ -38,9 +38,7 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(result, {
-    headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=600" },
-  });
+  return NextResponse.json(result);
 }
 
 /** POST /api/fabrics — tambah jenis kain baru */

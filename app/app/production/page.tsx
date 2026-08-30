@@ -14,6 +14,7 @@ import {
   CalendarClock,
   Package,
   AlertTriangle,
+  Wrench,
 } from "lucide-react";
 import { UpdateTimelineDialog } from "@/components/dialogs/update-timeline-dialog";
 import { api, type Order, type ProductionTimeline } from "@/lib/api";
@@ -24,6 +25,7 @@ import {
   daysLeftLabel,
   cn,
 } from "@/lib/utils";
+import { DEADLINE_STATUS } from "@/lib/status-config";
 
 function getCardClass(days: number, isShipped: boolean) {
   if (isShipped) return "border-green-300 bg-green-100";
@@ -34,10 +36,10 @@ function getCardClass(days: number, isShipped: boolean) {
 }
 
 function getDeadlineBadgeClass(days: number, isShipped: boolean) {
-  if (isShipped) return "bg-green-200 text-green-800";
-  if (days < 0) return "bg-red-700 text-white";
-  if (days <= 1) return "bg-red-500 text-white";
-  if (days < 3) return "bg-orange-500 text-white";
+  if (isShipped) return DEADLINE_STATUS.safe.className;
+  if (days < 0) return DEADLINE_STATUS.overdue.className;
+  if (days <= 1) return DEADLINE_STATUS.urgent.className;
+  if (days < 3) return DEADLINE_STATUS.warning.className;
   return "bg-blue-200 text-blue-800";
 }
 
@@ -73,6 +75,25 @@ function getEstimateStatus(stage: ProductionTimeline) {
   };
 }
 
+function formatShortDate(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+}
+
+function calculateDuration(startStr?: string | null, endStr?: string | null): string | null {
+  if (!startStr || !endStr) return null;
+  const start = new Date(startStr).getTime();
+  const end = new Date(endStr).getTime();
+  if (isNaN(start) || isNaN(end) || end < start) return null;
+  const diffHours = Math.max(1, Math.round((end - start) / (1000 * 60 * 60)));
+  if (diffHours < 24) {
+    return `${diffHours} jam`;
+  }
+  const diffDays = Math.max(1, Math.round(diffHours / 24));
+  return `${diffDays} hari`;
+}
+
 interface OrderWithData extends Order {
   timelines: ProductionTimeline[];
   bomItems: { fabricName: string; qtyActual: number }[];
@@ -84,7 +105,13 @@ export default function ProductionPage() {
   const [selectedOrder, setSelectedOrder] = useState<{
     id: string;
     orderNumber: string;
-    stages: Array<{ name: string; status: string }>;
+    stages: Array<{
+      name: string;
+      status: string;
+      actualStart?: string | null;
+      actualEnd?: string | null;
+      estimatedHrs?: number | null;
+    }>;
   } | null>(null);
 
   useEffect(() => {
@@ -101,7 +128,13 @@ export default function ProductionPage() {
     setSelectedOrder({
       id: order.id,
       orderNumber: order.orderNumber,
-      stages: order.timelines.map((t) => ({ name: t.stageName, status: t.status })),
+      stages: order.timelines.map((t) => ({
+        name: t.stageName,
+        status: t.status,
+        actualStart: t.actualStart,
+        actualEnd: t.actualEnd,
+        estimatedHrs: t.estimatedHrs,
+      })),
     });
   };
 
@@ -128,10 +161,11 @@ export default function ProductionPage() {
       {orders.length === 0 && (
         <Card className="bg-white border-gray-300 card-shadow-lg">
           <CardContent className="py-10 text-center">
-            <p className="text-sm font-medium text-foreground mb-1">
+            <Wrench className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-base font-medium text-foreground mb-1">
               Tidak ada order dalam produksi
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Order yang berstatus Produksi atau QC akan muncul di sini
             </p>
           </CardContent>
@@ -160,24 +194,24 @@ export default function ProductionPage() {
           return (
             <Card
               key={order.id}
-              className={`border card-shadow-lg cursor-pointer hover:shadow-xl transition-shadow ${getCardClass(
+              className={`border card-shadow-lg cursor-pointer hover:shadow-xl active:scale-[0.99] transition-all ${getCardClass(
                 days,
                 isShipped
               )}`}
               onClick={() => handleOrderClick(order)}
             >
-              <CardContent className="pt-4 pb-4">
+              <CardContent className="p-4 sm:p-5">
                 {/* Header */}
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">
+                    <p className="text-base font-bold text-foreground truncate">
                       {order.orderNumber}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       {order.customerName} • {order.qtyItems} pcs
                     </p>
                   </div>
-                  <Badge variant="secondary" className={getDeadlineBadgeClass(days, isShipped)}>
+                  <Badge variant="secondary" className={`shrink-0 text-xs ${getDeadlineBadgeClass(days, isShipped)}`}>
                     {isShipped
                       ? "Selesai"
                       : order.deadline
@@ -187,73 +221,89 @@ export default function ProductionPage() {
                 </div>
 
                 {/* Progress */}
-                <div className="mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Progress
-                    </p>
-                    <p className="text-xs font-semibold text-foreground">
-                      {completedCount}/{timeline.length} stage • {progressPct}%
-                    </p>
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1.5 text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      Progress Produksi
+                    </span>
+                    <span className="font-bold text-foreground">
+                      {completedCount}/{timeline.length} stage ({progressPct}%)
+                    </span>
                   </div>
-                  <div className="h-2 w-full bg-white/70 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-white/80 rounded-full overflow-hidden border border-black/5">
                     <div
-                      className={`h-full rounded-full ${getProgressColor(progressPct)}`}
+                      className={`h-full rounded-full transition-all duration-300 ${getProgressColor(progressPct)}`}
                       style={{ width: `${progressPct}%` }}
                     />
                   </div>
                 </div>
 
-                {/* Stages */}
-                <div className="space-y-1.5 mb-3">
-                  {timeline.map((stage, i) => {
-                    const estimate = getEstimateStatus(stage);
+                {/* Stages List */}
+                <div className="space-y-2 mb-3.5 bg-white/70 rounded-xl p-3 border border-border/50">
+                  {timeline.map((stage) => {
+                    const isCompleted = stage.status === "completed";
+                    const isInProgress = stage.status === "in_progress";
+                    const duration = calculateDuration(stage.actualStart, stage.actualEnd);
+
                     return (
-                      <div key={stage.id} className="flex items-center gap-2">
-                        {getStageIcon(stage.status)}
-                        <p className="text-xs text-foreground flex-1">
-                          {stage.stageName}
-                        </p>
-                        {estimate ? (
-                          <span className={`text-[10px] font-medium ${estimate.className}`}>
-                            {estimate.label}
+                      <div key={stage.id} className="flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {getStageIcon(stage.status)}
+                          <span className={cn(
+                            "font-medium capitalize truncate",
+                            isInProgress ? "text-blue-900 font-bold" : isCompleted ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {stage.stageName}
                           </span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">
-                            {stage.estimatedHrs ? `±${stage.estimatedHrs}h` : ""}
-                          </span>
-                        )}
-                        {i < timeline.length - 1 && (
-                          <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
-                        )}
+                        </div>
+
+                        {/* Date info / Badge */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isCompleted && stage.actualEnd && (
+                            <span className="text-[11px] font-medium text-green-800 bg-green-100/90 border border-green-300 px-2 py-0.5 rounded-md">
+                              {formatShortDate(stage.actualEnd)}{duration ? ` (${duration})` : ""}
+                            </span>
+                          )}
+                          {isInProgress && (
+                            <span className="text-[11px] font-semibold text-blue-800 bg-blue-100/90 border border-blue-300 px-2 py-0.5 rounded-md animate-pulse">
+                              {stage.actualStart ? `Mulai ${formatShortDate(stage.actualStart)}` : "Berjalan"}
+                            </span>
+                          )}
+                          {!isCompleted && !isInProgress && (
+                            <span className="text-[11px] text-muted-foreground/70">
+                              {stage.estimatedHrs ? `±${stage.estimatedHrs}h` : "Belum mulai"}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between border-t border-border/50 pt-2.5">
-                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <CalendarClock className="h-3 w-3" />
+                <div className="flex items-center justify-between border-t border-border/50 pt-2.5 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <CalendarClock className="h-3.5 w-3.5" />
                     {order.deadline
-                      ? `Deadline ${formatDate(order.deadline)}${remainingHrs > 0 ? ` • sisa ±${remainingHrs}h` : ""}`
+                      ? `Deadline: ${formatDate(order.deadline)}${remainingHrs > 0 ? ` (sisa ±${remainingHrs}h)` : ""}`
                       : "Tanpa deadline"}
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Package className="h-3 w-3" />
-                    {bom.length} jenis • {totalBomKg.toFixed(1)} kg
+                  <span className="flex items-center gap-1">
+                    <Package className="h-3.5 w-3.5" />
+                    {totalBomKg.toFixed(1)} kg
                   </span>
                 </div>
 
-                {bom.some(() => true) && (
+                <div className="mt-2.5 pt-2 border-t border-border/30 flex items-center justify-between">
+                  <span className="text-[11px] text-primary font-medium">Klik untuk update timeline</span>
                   <Link
                     href={`/orders/${order.id}`}
-                    className="mt-2 text-[11px] font-medium text-primary hover:underline"
+                    className="text-[11px] font-semibold text-primary hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    Lihat detail order →
+                    Detail Order →
                   </Link>
-                )}
+                </div>
               </CardContent>
             </Card>
           );

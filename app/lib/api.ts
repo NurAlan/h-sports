@@ -36,6 +36,18 @@ export const api = {
 // Types — match dengan Prisma schema
 // ============================================================
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  businessName: string | null;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Fabric {
   id: string;
   name: string;
@@ -71,6 +83,14 @@ export interface Order {
   costing?: OrderCosting | null;
 }
 
+export interface OrderCostItem {
+  id: string;
+  orderId: string;
+  label: string;
+  amount: number;
+  keterangan: string | null;
+}
+
 export interface OrderCosting {
   id?: string;
   materialCost: number;
@@ -81,8 +101,10 @@ export interface OrderCosting {
   fixedProfit: number;
   sellingPrice: number;
   shippingCost: number;
+  otherCostTotal: number;
   profit: number;
   profitMargin: number;
+  otherCosts?: OrderCostItem[];
 }
 
 export interface BomItem {
@@ -127,12 +149,14 @@ export interface MonthSummary {
 }
 
 export interface DashboardData {
-  summaries: MonthlySummary[];
-  thisMonth: MonthSummary;
-  lastMonth: MonthSummary;
-  totalStock: number;
+  orderStats: {
+    total: number;
+    running: number;
+    draft: number;
+    overdue: number;
+    upcomingDeadline: number;
+  };
   lowStock: { id: string; name: string; stock: number; reorderPoint: number }[];
-  activeOrders: Order[];
 }
 
 export interface ReportsData {
@@ -161,6 +185,14 @@ export interface ProductionReportOrder {
   onTime: boolean | null;
   stagesTotal: number;
   stagesCompleted: number;
+  materialCost: number;
+  laborCost: number;
+  shippingCost: number;
+  otherCostTotal: number;
+  otherCosts: { label: string; amount: number; keterangan: string | null }[];
+  pricingMethod: string;
+  markupPct: number | null;
+  fixedProfit: number;
 }
 
 export interface ProductionReportData {

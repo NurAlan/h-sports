@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { api, type Order } from "@/lib/api";
 import { DetailSkeleton } from "@/components/skeletons";
 import { useToast } from "@/components/toast/toast-provider";
-import { formatRupiah, formatDate, daysUntil, daysLeftLabel, profitColor } from "@/lib/utils";
+import { formatRupiah, formatDate, daysUntil, daysLeftLabel, profitColor, cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Package,
@@ -27,19 +27,14 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogBody, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AddBOMItemDialog } from "@/components/dialogs/add-bom-item-dialog";
 import { UpdateTimelineDialog } from "@/components/dialogs/update-timeline-dialog";
 import { CostingCalculatorDialog } from "@/components/dialogs/costing-calculator-dialog";
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-gray-100 text-gray-700" },
-  in_production: { label: "Produksi", className: "bg-blue-100 text-blue-700" },
-  qc: { label: "QC", className: "bg-amber-100 text-amber-700" },
-  shipped: { label: "Terkirim", className: "bg-green-100 text-green-700" },
-};
+import { MenuGuide } from "@/components/tutorial/menu-guide";
+import { ORDER_STATUS } from "@/lib/status-config";
 
 // Workflow status: draft → in_production → qc → shipped
 const STATUS_FLOW = ["draft", "in_production", "qc", "shipped"] as const;
@@ -51,20 +46,50 @@ const NEXT_ACTION: Record<string, { label: string; next: string }> = {
 
 function getStageIcon(status: string) {
   switch (status) {
-    case "completed": return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-    case "in_progress": return <Clock className="h-4 w-4 text-blue-600" />;
-    default: return <Circle className="h-4 w-4 text-gray-300" />;
+    case "completed":
+      return <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />;
+    case "in_progress":
+      return <Clock className="h-5 w-5 text-blue-600 shrink-0 animate-pulse" />;
+    default:
+      return <Circle className="h-5 w-5 text-gray-400 shrink-0" />;
   }
 }
 
 function getStageBadge(status: string) {
   const variants: Record<string, { label: string; className: string }> = {
-    completed: { label: "Selesai", className: "bg-green-100 text-green-700" },
-    in_progress: { label: "Sedang Dikerjakan", className: "bg-blue-100 text-blue-700" },
-    not_started: { label: "Belum Dimulai", className: "bg-gray-100 text-gray-600" },
+    completed: { label: "Selesai", className: "bg-green-100 text-green-800 border-green-300 font-semibold" },
+    in_progress: { label: "Sedang Dikerjakan", className: "bg-blue-100 text-blue-800 border-blue-300 font-semibold" },
+    not_started: { label: "Belum Dimulai", className: "bg-gray-100 text-gray-700 border-gray-300" },
   };
-  const config = variants[status] || { label: status, className: "" };
-  return <Badge variant="secondary" className={`text-xs ${config.className}`}>{config.label}</Badge>;
+  const config = variants[status] || { label: status, className: "bg-gray-100 text-gray-700" };
+  return (
+    <Badge variant="secondary" className={`text-xs border px-2.5 py-0.5 ${config.className}`}>
+      {config.label}
+    </Badge>
+  );
+}
+
+function formatTimelineDate(dateStr?: string | null): string {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function calculateDuration(startStr?: string | null, endStr?: string | null): string | null {
+  if (!startStr || !endStr) return null;
+  const start = new Date(startStr).getTime();
+  const end = new Date(endStr).getTime();
+  if (isNaN(start) || isNaN(end) || end < start) return null;
+  const diffHours = Math.max(1, Math.round((end - start) / (1000 * 60 * 60)));
+  if (diffHours < 24) {
+    return `${diffHours} jam`;
+  }
+  const diffDays = Math.max(1, Math.round(diffHours / 24));
+  return `${diffDays} hari`;
 }
 
 export default function OrderDetailPage() {
@@ -87,6 +112,8 @@ export default function OrderDetailPage() {
       stageName: string;
       status: string;
       estimatedHrs: number | null;
+      actualStart?: string | null;
+      actualEnd?: string | null;
     }>;
     costing?: {
       materialCost: number;
@@ -97,6 +124,7 @@ export default function OrderDetailPage() {
       fixedProfit: number;
       sellingPrice: number;
       shippingCost: number;
+      otherCostTotal: number;
       profit: number;
       profitMargin: number;
     } | null;
@@ -150,6 +178,20 @@ export default function OrderDetailPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    // Muat stok inventory bersamaan — supaya banner shortage akurat sejak awal
+    api
+      .get<{ colors: { colorId: string; stock: number }[] }[]>("/api/inventory")
+      .then((invData) => {
+        const map: Record<string, number> = {};
+        for (const fabric of invData) {
+          for (const c of fabric.colors ?? []) {
+            map[c.colorId] = c.stock;
+          }
+        }
+        setStockMap(map);
+      })
+      .catch(() => {});
   }, [params.id]);
 
   // Data BOM (null-safe saat loading) — hook HARUS sebelum early return
@@ -183,12 +225,12 @@ export default function OrderDetailPage() {
     return (
       <div className="container max-w-lg mx-auto px-4 py-6 text-center">
         <p className="text-muted-foreground">Order tidak ditemukan</p>
-        <Link href="/orders" className="text-primary text-sm hover:underline">← Kembali ke Orders</Link>
+        <Link href="/orders" className="text-primary text-base hover:underline">← Kembali ke Orders</Link>
       </div>
     );
   }
 
-  const status = statusConfig[order.status] || statusConfig.draft;
+  const status = ORDER_STATUS[order.status] || ORDER_STATUS.draft;
   const timeline = order.timelines ?? [];
   const costing = order.costing ?? null;
   const isDraft = order.status === "draft";
@@ -254,7 +296,7 @@ export default function OrderDetailPage() {
       toast.success(
         nextAction.next === "in_production"
           ? `Order ${order.orderNumber} masuk produksi — stok dipotong (FIFO)`
-          : `Order ${order.orderNumber} → ${statusConfig[nextAction.next]?.label ?? nextAction.next}`
+          : `Order ${order.orderNumber} → ${ORDER_STATUS[nextAction.next]?.label ?? nextAction.next}`
       );
       // Refetch detail order — timeline auto-created di server langsung tampil
       const fresh = await api.get<typeof order>(`/api/orders/${order.id}`);
@@ -329,23 +371,26 @@ export default function OrderDetailPage() {
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6">
-      {/* Back */}
-      <Link href="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mb-4">
-        <ArrowLeft className="h-4 w-4" /> Kembali ke Orders
-      </Link>
+      {/* Top Bar: Back + Guide */}
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <Link href="/orders" className="inline-flex items-center gap-1.5 text-base font-medium text-primary hover:underline">
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Orders
+        </Link>
+        <MenuGuide menuKey="order_detail" />
+      </div>
 
       {/* Header Order */}
       <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
         <CardContent className="pt-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-lg font-bold text-foreground">{order.orderNumber}</p>
+            <p className="text-xl font-bold text-foreground">{order.orderNumber}</p>
             <Badge variant="secondary" className={status.className}>{status.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground mb-1">{order.customerName}</p>
+          <p className="text-base text-muted-foreground mb-1">{order.customerName}</p>
           {order.customerContact && (
-            <p className="text-xs text-muted-foreground mb-1">{order.customerContact}</p>
+            <p className="text-sm text-muted-foreground mb-1">{order.customerContact}</p>
           )}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1"><Package className="h-3 w-3" /> {order.qtyItems} pcs</span>
             <span>Order: {formatDate(order.orderDate)}</span>
           </div>
@@ -354,7 +399,7 @@ export default function OrderDetailPage() {
           <div className="mt-4">
             <div className="flex items-center gap-1 mb-3">
               {STATUS_FLOW.map((s, i) => {
-                const config = statusConfig[s];
+                const config = ORDER_STATUS[s];
                 const isDone = i < currentIndex || order.status === "shipped";
                 const isCurrent = i === currentIndex;
                 return (
@@ -394,7 +439,7 @@ export default function OrderDetailPage() {
             {/* Peringatan stok tidak cukup — hanya untuk Draft */}
             {isDraft && shortages.length > 0 && (
               <div className="mb-2 rounded-lg bg-red-50 border border-red-300 px-3 py-2.5">
-                <p className="text-xs font-semibold text-red-700 mb-1">
+                <p className="text-sm font-semibold text-red-700 mb-1">
                   ⚠️ Stok tidak cukup untuk memulai produksi:
                 </p>
                 {shortages.map((s) => (
@@ -423,7 +468,7 @@ export default function OrderDetailPage() {
                 onMouseEnter={loadStockIfNeeded}
                 onTouchStart={loadStockIfNeeded}
                 disabled={statusUpdating || !canAdvance || stockLoading}
-                className={`w-full gap-1.5 ${!canAdvance ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`w-full h-12 text-base font-semibold shadow-md active:scale-[0.98] transition-all gap-2 ${!canAdvance ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {statusUpdating ? (
                   "Memproses..."
@@ -444,7 +489,7 @@ export default function OrderDetailPage() {
               </>
             )}
             {order.status === "shipped" && (
-              <p className="text-center text-xs font-medium text-green-600 mt-1">
+              <p className="text-center text-sm font-medium text-green-600 mt-1">
                 ✓ Order selesai & terkirim
               </p>
             )}
@@ -453,7 +498,7 @@ export default function OrderDetailPage() {
           <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium text-foreground">Deadline: {order.deadline ? formatDate(order.deadline) : "—"}</span>
+              <span className="text-sm font-medium text-foreground">Deadline: {order.deadline ? formatDate(order.deadline) : "—"}</span>
             </div>
             {(() => {
               const days = order.deadline ? daysUntil(order.deadline) : 999;
@@ -471,8 +516,8 @@ export default function OrderDetailPage() {
           </div>
           {order.specification && (
             <div className="mt-3 pt-3 border-t border-border/60">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Spesifikasi:</p>
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap">{order.specification}</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Spesifikasi:</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.specification}</p>
             </div>
           )}
         </CardContent>
@@ -481,17 +526,23 @@ export default function OrderDetailPage() {
       {/* 1. BOM — Komposisi Bahan */}
       <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
         <CardHeader className="pb-2 flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" />
             Komposisi Bahan
           </CardTitle>
-          <Button size="sm" className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm" onClick={() => setBomOpen(true)}>
+          <Button
+            size="sm"
+            className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => setBomOpen(true)}
+            disabled={!isDraft}
+            title={!isDraft ? "BOM tidak bisa diubah setelah produksi dimulai" : undefined}
+          >
             <Plus className="h-3.5 w-3.5" /> Tambah
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {bom.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">Belum ada bahan — klik Tambah untuk mulai</p>
+            <p className="text-base text-muted-foreground text-center py-4">Belum ada bahan — klik Tambah untuk mulai</p>
           )}
           {bom.map((item) => {
             const shortage = shortages.find((s) => s.fabricName === item.fabricName);
@@ -512,37 +563,41 @@ export default function OrderDetailPage() {
                       ⚠️
                     </span>
                   )}
-                  <p className={`text-sm font-semibold truncate ${isShort ? "text-red-700" : "text-foreground"}`}>
+                  <p className={`text-base font-semibold truncate ${isShort ? "text-red-700" : "text-foreground"}`}>
                     {item.fabricName} — {item.colorName}
                   </p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => openEditBom(item)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:bg-blue-50 hover:text-primary transition-colors"
-                    title="Edit bahan"
+                    disabled={!isDraft}
+                    className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg transition-all duration-150 active:scale-90 ${!isDraft ? "opacity-30 cursor-not-allowed text-muted-foreground" : "bg-blue-50 text-primary border border-blue-200/80 hover:bg-blue-100 hover:text-blue-700 shadow-xs"}`}
+                    title={!isDraft ? "BOM tidak bisa diubah setelah produksi dimulai" : "Edit bahan"}
+                    aria-label="Edit bahan"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleteBomItem(item)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
-                    title="Hapus bahan"
+                    disabled={!isDraft}
+                    className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg transition-all duration-150 active:scale-90 ${!isDraft ? "opacity-30 cursor-not-allowed text-muted-foreground" : "bg-red-50 text-red-600 border border-red-200/80 hover:bg-red-100 hover:text-red-700 shadow-xs"}`}
+                    title={!isDraft ? "BOM tidak bisa diubah setelah produksi dimulai" : "Hapus bahan"}
+                    aria-label="Hapus bahan"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span>{item.qtyRequired} kg bersih</span>
                 <span>Waste: {item.wastePct}%</span>
                 <span>Pakai: {item.qtyActual} kg</span>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">{formatRupiah(item.pricePerKg)}/kg</p>
-                <p className="text-sm font-bold">{formatRupiah(item.materialCost)}</p>
+                <p className="text-sm text-muted-foreground">{formatRupiah(item.pricePerKg)}/kg</p>
+                <p className="text-base font-bold">{formatRupiah(item.materialCost)}</p>
               </div>
               {isShort && (
                 <p className="text-[11px] text-red-600 font-medium mt-1 bg-red-100 rounded px-2 py-1">
@@ -555,8 +610,8 @@ export default function OrderDetailPage() {
           })}
           {bom.length > 0 && (
             <div className="flex items-center justify-between pt-1">
-              <p className="text-sm font-semibold text-foreground">Total Material Cost</p>
-              <p className="text-sm font-bold text-primary">
+              <p className="text-base font-semibold text-foreground">Total Material Cost</p>
+              <p className="text-base font-bold text-primary">
                 {formatRupiah(bom.reduce((s, i) => s + i.materialCost, 0))}
               </p>
             </div>
@@ -567,7 +622,7 @@ export default function OrderDetailPage() {
       {/* 2. Costing — HPP & Harga Jual */}
       <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
         <CardHeader className="pb-2 flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
             Costing & Harga Jual
           </CardTitle>
@@ -584,33 +639,45 @@ export default function OrderDetailPage() {
         <CardContent>
           {costing ? (
             <div className="space-y-3">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className="text-muted-foreground">Material Cost</span>
                 <span className="font-medium">{formatRupiah(costing.materialCost)}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className="text-muted-foreground">Upah Jahit</span>
                 <span className="font-medium">{formatRupiah(costing.laborCost)}</span>
               </div>
+              {costing.otherCostTotal > 0 && (
+                <div className="flex justify-between text-base">
+                  <span className="text-muted-foreground">Biaya Lain-lain</span>
+                  <span className="font-medium">{formatRupiah(costing.otherCostTotal)}</span>
+                </div>
+              )}
               <Separator />
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className="font-semibold text-foreground">HPP (Total)</span>
                 <span className="font-bold">{formatRupiah(costing.hpp)}</span>
               </div>
               <Separator />
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className="text-muted-foreground">
-                  Markup ({costing.markupPct}%)
+                  {costing.pricingMethod === "markup"
+                    ? `Markup (${costing.markupPct}%)`
+                    : "Profit Tetap"}
                 </span>
-                <span className="font-medium text-primary">{formatRupiah(costing.sellingPrice - costing.hpp)}</span>
+                <span className="font-medium text-primary">
+                  {formatRupiah(costing.pricingMethod === "markup"
+                    ? costing.hpp * ((costing.markupPct ?? 0) / 100)
+                    : costing.fixedProfit)}
+                </span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className="text-muted-foreground">Ongkos Kirim</span>
                 <span className="font-medium">{formatRupiah(costing.shippingCost)}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className="font-semibold text-foreground">Harga Jual</span>
-                <span className="font-bold text-lg text-primary">{formatRupiah(costing.sellingPrice)}</span>
+                <span className="font-bold text-xl text-primary">{formatRupiah(costing.sellingPrice)}</span>
               </div>
               <Separator className="bg-primary/20" />
               <div className="flex items-center justify-between">
@@ -619,14 +686,14 @@ export default function OrderDetailPage() {
                   <span className={`font-semibold ${profitColor(costing.profit)}`}>Profit</span>
                 </div>
                 <div className="text-right">
-                  <p className={`font-bold text-lg ${profitColor(costing.profit)}`}>{formatRupiah(costing.profit)}</p>
-                  <p className={`text-xs ${profitColor(costing.profit)}`}>Margin {costing.profitMargin.toFixed(1)}%</p>
+                  <p className={`font-bold text-xl ${profitColor(costing.profit)}`}>{formatRupiah(costing.profit)}</p>
+                  <p className={`text-sm ${profitColor(costing.profit)}`}>Margin {costing.profitMargin.toFixed(1)}%</p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground mb-2">Belum ada data costing</p>
+              <p className="text-base text-muted-foreground mb-2">Belum ada data costing</p>
               <Button 
                 size="sm" 
                 onClick={() => setCostingOpen(true)}
@@ -640,22 +707,27 @@ export default function OrderDetailPage() {
         </CardContent>
       </Card>
 
-      {/* 3. Timeline Produksi */}
-      <Card className="card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-        <CardHeader className="pb-2 flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary" />
-            Timeline Produksi
-          </CardTitle>
+      {/* 3. Timeline Produksi — Accessible Vertical Stepper */}
+      <Card className="card-shadow-lg bg-white border-2 border-gray-200 hover:shadow-xl transition-all">
+        <CardHeader className="pb-3 flex-row items-center justify-between border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Timeline Produksi</CardTitle>
+              <p className="text-xs text-muted-foreground">Riwayat tanggal & progress tiap tahapan</p>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             {isDraft && (
-              <span className="text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
-                ⚠️ Kunci Draft
+              <span className="text-[11px] font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                Kunci Draft
               </span>
             )}
             <Button
               size="sm"
-              className="h-8 gap-1 bg-white text-primary border border-primary/40 hover:bg-blue-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[38px] px-3.5 gap-1.5 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => setTimelineOpen(true)}
               disabled={isDraft}
               title={isDraft ? "Mulai produksi dulu untuk update timeline" : undefined}
@@ -664,31 +736,93 @@ export default function OrderDetailPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="pt-4 pb-4">
           {isDraft && (
-            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Timeline dikunci saat status Draft. Klik <b>Mulai Produksi</b> di atas untuk mengaktifkan update timeline.
-            </p>
-          )}
-          {timeline.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              {isDraft
-                ? "Timeline akan muncul otomatis setelah order mulai produksi"
-                : "Belum ada timeline"}
-            </p>
-          )}
-          {timeline.map((stage) => (
-            <div key={stage.id} className="flex items-center gap-3 pb-2 border-b border-border/60 last:border-0 last:pb-0">
-              <div className="flex-shrink-0">{getStageIcon(stage.status)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{stage.stageName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {stage.estimatedHrs ? `Estimasi ±${stage.estimatedHrs}h` : ""}
-                </p>
-              </div>
-              <div>{getStageBadge(stage.status)}</div>
+            <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+              <span className="font-bold">⚠️</span>
+              <p>Timeline dikunci saat status Draft. Klik <b>Mulai Produksi</b> di atas untuk mengaktifkan pelacakan tanggal produksi.</p>
             </div>
-          ))}
+          )}
+
+          {timeline.length === 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              <Clock className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-medium">
+                {isDraft
+                  ? "Timeline akan aktif otomatis setelah order mulai produksi"
+                  : "Belum ada tahapan timeline"}
+              </p>
+            </div>
+          )}
+
+          {timeline.length > 0 && (
+            <div className="relative pl-6 space-y-4 before:absolute before:left-[11px] before:top-2 before:bottom-3 before:w-0.5 before:bg-gray-200">
+              {timeline.map((stage) => {
+                const duration = calculateDuration(stage.actualStart, stage.actualEnd);
+                const isCompleted = stage.status === "completed";
+                const isInProgress = stage.status === "in_progress";
+
+                return (
+                  <div key={stage.id} className="relative group">
+                    {/* Stepper Node Icon */}
+                    <div className="absolute -left-6 top-0.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white ring-4 ring-white">
+                      {getStageIcon(stage.status)}
+                    </div>
+
+                    {/* Content Box */}
+                    <div className={cn(
+                      "rounded-xl border p-3 transition-all",
+                      isInProgress ? "border-blue-300 bg-blue-50/50 shadow-xs" : isCompleted ? "border-gray-200 bg-gray-50/70" : "border-gray-200 bg-white"
+                    )}>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-sm font-bold text-foreground capitalize truncate">
+                          {stage.stageName}
+                        </span>
+                        {getStageBadge(stage.status)}
+                      </div>
+
+                      {/* Date details */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground pt-1">
+                        {stage.actualStart ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-foreground/80">Mulai:</span>
+                            <span className="font-medium text-foreground">{formatTimelineDate(stage.actualStart)}</span>
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground/60 italic text-[11px]">Belum dimulai</div>
+                        )}
+                        {stage.actualEnd && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-foreground/80">Selesai:</span>
+                            <span className="font-medium text-foreground">{formatTimelineDate(stage.actualEnd)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Duration & status caption */}
+                      {(duration || isInProgress || stage.estimatedHrs) && (
+                        <div className="mt-2 flex items-center justify-between text-[11px] border-t border-gray-200/80 pt-1.5">
+                          <span className="text-muted-foreground">
+                            {stage.estimatedHrs ? `Estimasi ±${stage.estimatedHrs} jam` : ""}
+                          </span>
+                          {duration && (
+                            <span className="font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                              Durasi: {duration}
+                            </span>
+                          )}
+                          {isInProgress && !duration && (
+                            <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full animate-pulse">
+                              Sedang dikerjakan
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -698,6 +832,7 @@ export default function OrderDetailPage() {
         onOpenChange={setBomOpen}
         orderId={order.id}
         orderNumber={order.orderNumber}
+        existingColorIds={(order.bomItems ?? []).map((b) => b.fabricColorId)}
         onAdded={(item) => {
           // Tambah langsung ke state — tampil tanpa reload (rollback otomatis jika gagal)
           setOrder((prev) =>
@@ -710,7 +845,13 @@ export default function OrderDetailPage() {
         onOpenChange={setTimelineOpen}
         orderId={order.id}
         orderNumber={order.orderNumber}
-        currentStages={timeline.map((t) => ({ name: t.stageName, status: t.status }))}
+        currentStages={timeline.map((t) => ({
+          name: t.stageName,
+          status: t.status,
+          estimatedHrs: t.estimatedHrs,
+          actualStart: t.actualStart,
+          actualEnd: t.actualEnd,
+        }))}
         onUpdated={(newTimeline) => {
           // Timeline langsung tampil tanpa reload — update state dari response API
           setOrder((prev) => (prev ? { ...prev, timelines: newTimeline } : prev));
@@ -721,36 +862,38 @@ export default function OrderDetailPage() {
       {/* Dialog edit BOM */}
       <Dialog open={!!editBomItem} onOpenChange={(o) => !o && setEditBomItem(null)}>
         <DialogContent className="sm:max-w-[400px]">
-          <form onSubmit={handleUpdateBom}>
-            <DialogHeader>
-              <DialogTitle>Edit Bahan BOM</DialogTitle>
-              <DialogDescription>{editBomItem?.fabricName}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Jumlah Bersih (kg)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={editBomForm.qtyRequired}
-                  onChange={(e) => setEditBomForm((f) => ({ ...f, qtyRequired: e.target.value }))}
-                  required
-                />
+          <DialogHeader>
+            <DialogTitle>Edit Bahan BOM</DialogTitle>
+            <DialogDescription>{editBomItem?.fabricName}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateBom} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <DialogBody>
+              <div className="grid gap-4 py-2">
+                <div className="grid gap-2">
+                  <Label>Jumlah Bersih (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editBomForm.qtyRequired}
+                    onChange={(e) => setEditBomForm((f) => ({ ...f, qtyRequired: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Waste (%)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={editBomForm.wastePct}
+                    onChange={(e) => setEditBomForm((f) => ({ ...f, wastePct: e.target.value }))}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Waste (%)</Label>
-                <Input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={editBomForm.wastePct}
-                  onChange={(e) => setEditBomForm((f) => ({ ...f, wastePct: e.target.value }))}
-                />
-              </div>
-            </div>
+            </DialogBody>
             <DialogFooter>
-              <Button type="button" variant="default" onClick={() => setEditBomItem(null)} disabled={editBomLoading}>Batal</Button>
+              <Button type="button" variant="outline" onClick={() => setEditBomItem(null)} disabled={editBomLoading}>Batal</Button>
               <Button type="submit" disabled={editBomLoading}>
                 {editBomLoading ? (
                   <span className="flex items-center gap-2">
@@ -775,7 +918,7 @@ export default function OrderDetailPage() {
               Bahan <b>{deleteBomItem?.fabricName}</b> akan dihapus dari BOM order ini.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
             ⚠️ Bahan ini akan dihapus dari rencana BOM. Stok kain <b>belum</b> dikurangi — stok baru akan dipotong saat order mulai diproduksi.
           </div>
           <DialogFooter>

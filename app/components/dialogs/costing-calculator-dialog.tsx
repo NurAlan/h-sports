@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatRupiah, profitColor } from "@/lib/utils";
 import { useToast } from "@/components/toast/toast-provider";
@@ -31,6 +32,17 @@ interface CostingCalculatorDialogProps {
   onOpenChange: (open: boolean) => void;
   orderId: string;
   orderNumber: string;
+}
+
+interface OtherCostRow {
+  id: string; // local key
+  label: string;
+  amount: string;
+  keterangan: string;
+}
+
+function newRow(): OtherCostRow {
+  return { id: Math.random().toString(36).slice(2), label: "", amount: "", keterangan: "" };
 }
 
 export function CostingCalculatorDialog({
@@ -44,22 +56,64 @@ export function CostingCalculatorDialog({
   const [pricingMethod, setPricingMethod] = useState<"markup" | "fixed_profit">("markup");
   const [markupPct, setMarkupPct] = useState("30");
   const [fixedProfit, setFixedProfit] = useState("");
+  const [otherCosts, setOtherCosts] = useState<OtherCostRow[]>([]);
   const [bomItems, setBomItems] = useState<{ materialCost: number }[]>([]);
   const [bomLoading, setBomLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  // Fetch BOM dari API saat dialog dibuka — material cost sesuai DB
+  // Fetch BOM + existing costing saat dialog dibuka
   useEffect(() => {
-    if (open && orderId) {
-      setBomLoading(true);
-      api
-        .get<{ materialCost: number }[]>(`/api/orders/${orderId}/bom`)
-        .then((items) => setBomItems(items))
-        .catch(() => setBomItems([]))
-        .finally(() => setBomLoading(false));
-    }
+    if (!open || !orderId) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBomLoading(true);
+
+    Promise.all([
+      api.get<{ materialCost: number }[]>(`/api/orders/${orderId}/bom`),
+      api.get<{
+        laborCost?: number;
+        shippingCost?: number;
+        pricingMethod?: string;
+        markupPct?: number | null;
+        fixedProfit?: number;
+        otherCosts?: { label: string; amount: number; keterangan: string | null }[];
+      }>(`/api/orders/${orderId}/costing`),
+    ])
+      .then(([bom, costing]) => {
+        setBomItems(bom);
+        if (costing && costing.laborCost != null) {
+          setLaborCost(String(costing.laborCost));
+          setShippingCost(String(costing.shippingCost ?? 50000));
+          setPricingMethod((costing.pricingMethod as "markup" | "fixed_profit") ?? "markup");
+          setMarkupPct(String(costing.markupPct ?? 30));
+          setFixedProfit(String(costing.fixedProfit ?? ""));
+          setOtherCosts(
+            (costing.otherCosts ?? []).map((c) => ({
+              id: Math.random().toString(36).slice(2),
+              label: c.label,
+              amount: String(c.amount),
+              keterangan: c.keterangan ?? "",
+            }))
+          );
+        }
+      })
+      .catch(() => setBomItems([]))
+      .finally(() => setBomLoading(false));
   }, [open, orderId]);
+
+  // Reset form ketika dialog ditutup
+  useEffect(() => {
+    if (!open) {
+      setLaborCost("500000");
+      setShippingCost("50000");
+      setPricingMethod("markup");
+      setMarkupPct("30");
+      setFixedProfit("");
+      setOtherCosts([]);
+      setBomItems([]);
+    }
+  }, [open]);
 
   // Material cost dari BOM (live dari API)
   const materialCost = useMemo(
@@ -72,15 +126,27 @@ export function CostingCalculatorDialog({
   const markupNum = parseFloat(markupPct) || 0;
   const fixedProfitNum = parseFloat(fixedProfit) || 0;
 
-  const hpp = materialCost + laborNum;
+  const otherCostTotal = useMemo(
+    () => otherCosts.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0),
+    [otherCosts]
+  );
+
+  // HPP = material + upah + biaya lain (ADR-0003); ongkir di luar HPP
+  const hpp = materialCost + laborNum + otherCostTotal;
 
   const sellingPrice =
     pricingMethod === "markup"
-      ? hpp * (1 + markupNum / 100)
-      : hpp + fixedProfitNum;
+      ? hpp * (1 + markupNum / 100) + shippingNum
+      : hpp + fixedProfitNum + shippingNum;
 
   const profit = sellingPrice - hpp - shippingNum;
   const profitMargin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+
+  // ── Biaya lain helpers ────────────────────────────────────────────
+  const addRow = () => setOtherCosts((prev) => [...prev, newRow()]);
+  const removeRow = (id: string) => setOtherCosts((prev) => prev.filter((r) => r.id !== id));
+  const updateRow = (id: string, field: keyof Omit<OtherCostRow, "id">, value: string) =>
+    setOtherCosts((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +158,13 @@ export function CostingCalculatorDialog({
         markupPct,
         fixedProfit,
         shippingCost,
+        otherCosts: otherCosts
+          .filter((c) => c.label.trim() && parseFloat(c.amount) > 0)
+          .map((c) => ({
+            label: c.label.trim(),
+            amount: parseFloat(c.amount),
+            keterangan: c.keterangan.trim() || null,
+          })),
       });
       onOpenChange(false);
       toast.success("Costing berhasil disimpan");
@@ -105,20 +178,20 @@ export function CostingCalculatorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Costing & Harga Jual</DialogTitle>
           <DialogDescription>
             {orderNumber} — Hitung HPP dan tentukan harga jual
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <DialogBody>
           <div className="grid gap-4">
             {/* Material cost (readonly) */}
             <div className="grid gap-2">
               <Label>Material Cost (dari BOM)</Label>
-              <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 text-sm font-semibold">
+              <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 text-base font-semibold">
                 {bomLoading ? (
                   <span className="text-muted-foreground animate-pulse">Memuat...</span>
                 ) : (
@@ -136,6 +209,76 @@ export function CostingCalculatorDialog({
                 value={laborCost}
                 onChange={setLaborCost}
               />
+            </div>
+
+            {/* ── Biaya Lain-lain ────────────────────────────────── */}
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Biaya Lain-lain</Label>
+                <button
+                  type="button"
+                  onClick={addRow}
+                  className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-white px-3 py-1.5 min-h-[36px] text-sm font-semibold text-primary hover:bg-blue-50 active:scale-95 transition-all shadow-xs"
+                >
+                  <Plus className="h-4 w-4" /> Tambah
+                </button>
+              </div>
+
+              {otherCosts.length === 0 && (
+                <p className="text-sm text-muted-foreground py-1">
+                  Belum ada biaya tambahan — klik Tambah untuk menambah sablon, resleting, aksesoris, dll.
+                </p>
+              )}
+
+              {otherCosts.map((row) => (
+                <div key={row.id} className="rounded-xl border border-gray-200 bg-gray-50/90 p-3 grid gap-2.5 shadow-xs">
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1 min-w-0">
+                      <label className="text-[11px] font-medium text-muted-foreground block mb-1">Nama biaya *</label>
+                      <Input
+                        placeholder="cth. Sablon, Resleting"
+                        value={row.label}
+                        onChange={(e) => updateRow(row.id, "label", e.target.value)}
+                        className="h-10 text-base"
+                      />
+                    </div>
+                    <div className="w-32 sm:w-36 shrink-0">
+                      <label className="text-[11px] font-medium text-muted-foreground block mb-1">Total (Rp) *</label>
+                      <CurrencyInput
+                        placeholder="50.000"
+                        value={row.amount}
+                        onChange={(v) => updateRow(row.id, "amount", v)}
+                        className="h-10 text-base"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.id)}
+                      className="h-10 w-10 min-w-[40px] flex items-center justify-center rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:text-red-700 active:scale-90 transition-all shrink-0"
+                      title="Hapus baris biaya"
+                      aria-label="Hapus baris biaya"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground block mb-1">Keterangan (opsional)</label>
+                    <Input
+                      placeholder="cth. 50 pcs × Rp 2.000"
+                      value={row.keterangan}
+                      onChange={(e) => updateRow(row.id, "keterangan", e.target.value)}
+                      className="h-10 text-base"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {otherCosts.length > 0 && (
+                <div className="flex justify-between text-sm px-1">
+                  <span className="text-muted-foreground">Total Biaya Lain</span>
+                  <span className="font-semibold">{formatRupiah(otherCostTotal)}</span>
+                </div>
+              )}
             </div>
 
             {/* Pricing method */}
@@ -192,25 +335,43 @@ export function CostingCalculatorDialog({
 
             {/* Hasil kalkulasi live */}
             <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">HPP (Material + Upah)</span>
-                <span className="font-semibold">{formatRupiah(hpp)}</span>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Material Cost</span>
+                <span>{formatRupiah(materialCost)}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Upah Jahit</span>
+                <span>{formatRupiah(laborNum)}</span>
+              </div>
+              {otherCostTotal > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Biaya Lain-lain</span>
+                  <span>{formatRupiah(otherCostTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-semibold border-t border-gray-200 pt-1.5">
+                <span>HPP</span>
+                <span>{formatRupiah(hpp)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Ongkos Kirim</span>
+                <span>{formatRupiah(shippingNum)}</span>
+              </div>
+              <div className="flex justify-between text-base">
                 <span className="text-muted-foreground">Harga Jual</span>
-                <span className="font-bold text-primary text-base">{formatRupiah(sellingPrice)}</span>
+                <span className="font-bold text-primary text-lg">{formatRupiah(sellingPrice)}</span>
               </div>
               <Separator />
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base">
                 <span className={profitColor(profit)}>Profit</span>
                 <span className={`font-bold ${profitColor(profit)}`}>{formatRupiah(profit)}</span>
               </div>
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Margin</span>
                 <span className={`font-medium ${profitColor(profit)}`}>{profitMargin.toFixed(1)}%</span>
               </div>
               {profit < 0 && (
-                <p className="text-xs text-red-600 font-medium">⚠️ Rugi! Naikkan markup atau profit tetap.</p>
+                <p className="text-sm text-red-600 font-medium">⚠️ Rugi! Naikkan markup atau profit tetap.</p>
               )}
             </div>
           </div>

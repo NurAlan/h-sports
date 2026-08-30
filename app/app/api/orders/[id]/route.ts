@@ -92,12 +92,20 @@ export async function PATCH(request: Request, { params }: Params) {
   return NextResponse.json(updated);
 }
 
-/** DELETE /api/orders/[id] — hapus order */
+/** DELETE /api/orders/[id] — hapus order (idempotent) */
 export async function DELETE(_request: Request, { params }: Params) {
   const { error } = await requireUser();
   if (error) return error;
 
   const { id } = await params;
-  await prisma.order.delete({ where: { id } });
+  try {
+    await prisma.order.delete({ where: { id } });
+  } catch (e) {
+    // P2025 = record sudah tidak ada (mis. sudah dihapus sebelumnya) — anggap sukses
+    if ((e as { code?: string }).code === "P2025") {
+      return NextResponse.json({ success: true });
+    }
+    return NextResponse.json({ error: "Gagal menghapus order" }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }

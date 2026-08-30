@@ -24,10 +24,10 @@ interface StatusFilterProps {
   className?: string;
 }
 
-/** Pills filter status — wrap responsif, aktif = primary. */
+/** Pills filter status — scroll horizontal mulus di mobile tanpa memakan vertikal space */
 export function StatusFilter({ options, value, onChange, showCounts, className }: StatusFilterProps) {
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex items-center gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0", className)}>
       {options.map((opt) => {
         const active = value === opt.value;
         return (
@@ -36,17 +36,17 @@ export function StatusFilter({ options, value, onChange, showCounts, className }
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors",
+              "flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 min-h-[40px] text-sm font-medium border transition-all duration-150 active:scale-95",
               active
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50 hover:text-foreground"
             )}
           >
             {opt.label}
             {showCounts && typeof opt.count === "number" && (
               <span
                 className={cn(
-                  "text-[10px] font-bold rounded-full px-1.5 py-0.5",
+                  "text-[10px] font-bold rounded-full px-1.5 py-0.5 ml-0.5",
                   active ? "bg-white/20 text-white" : "bg-gray-100 text-muted-foreground"
                 )}
               >
