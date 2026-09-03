@@ -254,68 +254,68 @@ export default function DashboardPage() {
 
         {/* 2. PERLU PERHATIAN - dengan animasi menonjol */}
         {data.needAttention.length > 0 && (
-          <Card className="border-0 bg-white shadow-lg rounded-2xl relative overflow-hidden animate-attention-pulse">
+          <Card className="border-0 bg-white shadow-2xl rounded-2xl relative overflow-hidden animate-attention-pulse ring-4 ring-red-500/50">
             {/* Animated gradient border effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-orange-200 to-amber-200 animate-gradient-shift pointer-events-none opacity-50" />
-            <div className="absolute inset-[2px] bg-white rounded-2xl z-0" />
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/40 via-orange-500/35 to-amber-500/30 animate-gradient-shift pointer-events-none" />
+            <div className="absolute inset-[3px] bg-white rounded-2xl z-0" />
             
             <CardHeader className="pb-3 relative z-10">
               <div className="flex items-center gap-3">
-                <div className="bg-amber-100 p-2.5 rounded-2xl relative animate-bounce-slow">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                <div className="bg-red-100 p-3 rounded-2xl relative animate-bounce-slow shadow-lg">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
                   {/* Ping animation ring */}
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600"></span>
                   </span>
                 </div>
                 <div>
-                  <CardTitle className="text-sm font-bold text-stone-900">
-                    Perlu Perhatian
+                  <CardTitle className="text-base font-extrabold text-red-700 tracking-tight">
+                    ⚠️ Perlu Perhatian
                   </CardTitle>
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    {data.needAttention.length} order memerlukan tindakan
+                  <p className="text-sm text-red-600 mt-0.5 font-semibold">
+                    {data.needAttention.length} order memerlukan tindakan segera
                   </p>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2 relative z-10">
+            <CardContent className="space-y-3 relative z-10">
               {data.needAttention.slice(0, 3).map((alert, index) => (
                 <Link
                   key={alert.id}
                   href={`/orders/${alert.id}`}
-                  className="block p-4 bg-amber-50/50 border border-amber-200 rounded-xl hover:bg-amber-100 hover:border-amber-400 hover:shadow-md transition-all active:scale-[0.99] animate-fade-in"
+                  className="block p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300 rounded-xl hover:from-red-100 hover:to-orange-100 hover:border-red-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] animate-fade-in shadow-md"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-stone-900 truncate mb-0.5">
+                      <p className="text-base font-extrabold text-red-900 truncate mb-1">
                         {alert.customerName}
                       </p>
-                      <p className="text-xs text-stone-600 truncate">
+                      <p className="text-sm text-red-700 truncate font-medium">
                         {alert.orderNumber}
                       </p>
                     </div>
                     <span
-                      className={`text-xs font-bold px-3 py-1.5 rounded-lg shrink-0 ${
+                      className={`text-sm font-extrabold px-4 py-2 rounded-xl shrink-0 shadow-lg ${
                         alert.severity === "overdue"
-                          ? "bg-red-500 text-white animate-pulse shadow-md"
-                          : "bg-amber-500 text-white"
+                          ? "bg-red-600 text-white animate-pulse ring-2 ring-red-300"
+                          : "bg-orange-600 text-white ring-2 ring-orange-300"
                       }`}
                     >
                       {alert.issue}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-stone-600">
+                  <div className="flex items-center gap-4 text-sm text-red-800 font-medium">
                     {alert.currentStage && (
-                      <span className="flex items-center gap-1.5">
-                        <Wrench className="h-3.5 w-3.5" />
+                      <span className="flex items-center gap-2 bg-white/50 px-2 py-1 rounded-lg">
+                        <Wrench className="h-4 w-4" />
                         {alert.currentStage}
                       </span>
                     )}
                     {alert.deadline && (
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" />
+                      <span className="flex items-center gap-2 bg-white/50 px-2 py-1 rounded-lg">
+                        <Clock className="h-4 w-4" />
                         {alert.daysToDeadline !== null &&
                           (alert.daysToDeadline >= 0
                             ? `${alert.daysToDeadline} hari lagi`
@@ -328,7 +328,7 @@ export default function DashboardPage() {
               {data.needAttention.length > 3 && (
                 <Link
                   href="/orders"
-                  className="block text-center py-2.5 text-xs font-bold text-amber-700 hover:text-amber-800 transition-colors"
+                  className="block text-center py-3 text-sm font-extrabold text-red-700 hover:text-red-900 hover:bg-red-50 rounded-xl transition-all"
                 >
                   Lihat semua ({data.needAttention.length})
                 </Link>
