@@ -10,25 +10,25 @@
 Master data jenis kain. Contoh: "Cotton Combed 30s". Setiap Fabric punya `reorderPoint` sebagai ambang batas stok menipis. Fabric yang sudah memiliki FabricColor tidak bisa dihapus.
 
 **FabricColor** (Warna Kain)
-Warna spesifik dari satu Fabric. Contoh: Cotton Combed 30s → Putih, Hitam, Merah. Warna lahir dari pembelian pertama — tidak ada master warna terpisah. Stok, FIFO, dan BOM beroperasi pada level FabricColor, bukan Fabric. `colorName` adalah text bebas.
+Warna spesifik dari satu Fabric. Contoh: Cotton Combed 30s → Putih, Hitam, Merah. Warna lahir dari pembelian pertama — tidak ada master warna terpisah. Stok dan BOM beroperasi pada level FabricColor, bukan Fabric. `colorName` adalah text bebas.
 
 **FabricBatch** (Batch Pembelian)
-Satu transaksi pembelian kain per warna. FK ke `fabricColorId`. Setiap batch menyimpan `qtyPurchased`, `qtyRemaining`, `pricePerKg`, dan `purchaseDate`. Sistem FIFO mengalokasikan dari batch tertua per FabricColor.
+Satu transaksi pembelian kain per warna. FK ke `fabricColorId`. Setiap batch menyimpan `qtyPurchased`, `qtyRemaining`, `pricePerKg`, dan `purchaseDate`. User memilih batch secara manual saat membuat BOM.
 
 **Order**
 Pesanan kaos dari customer. Status lifecycle: `draft` → `in_production` → `qc` → `shipped`. Order tanpa status `shipped` tidak masuk laporan profit.
 
 **BOM** / **BomItem** (Bill of Materials / Komposisi Bahan)
-Daftar warna kain yang dibutuhkan untuk satu Order. Setiap item menyimpan `fabricColorId`, `qtyRequired`, `wastePct`, dan `qtyActual = qtyRequired × (1 + wastePct/100)`. Display di UI: `{fabricName} — {colorName}`. Stok dikurangi sebesar `qtyActual`, bukan `qtyRequired`.
+Daftar batch kain yang dibutuhkan untuk satu Order. Setiap item memilih `batchId` spesifik (menyimpan tanggal pembelian dan harga per kg). Constraint `@@unique([orderId, batchId])` memungkinkan multi-batch untuk warna kain yang sama. Display di UI: `{fabricName} — {colorName}` beserta info tanggal batch pembelian dan harga/kg.
 
 **ProductionTimeline** (Timeline Produksi)
 5 stage produksi per Order: `pengukuran`, `pemotongan`, `jahit`, `finishing`, `qc`. Status per stage: `not_started` → `in_progress` → `completed`. Syarat maju ke QC: semua stage non-QC `completed`. Syarat Selesai: stage QC `completed`.
 
 **OrderCosting** (Costing)
-Data HPP dan harga jual per Order. `hpp = materialCost + laborCost`. Dua metode harga jual: `markup` (HPP × (1 + markupPct/100)) atau `fixed_profit` (HPP + fixedProfit). `profit = sellingPrice - hpp - shippingCost`.
+Data HPP dan harga jual per Order. `hpp = materialCost + laborCost`. Dua metode harga jual: `markup` (HPP × (1 + markupPct/100)) atau `fixed_profit` (HPP + fixedProfit). `profit = sellingPrice - hpp - shippingCost`. Tersinkronisasi otomatis setiap kali BOM berubah.
 
 **BatchUsage** (Pemakaian Batch)
-Catatan FIFO deduction: batch mana yang dikurangi berapa kg untuk order tertentu. Dibuat saat Order berubah status ke `in_production`.
+Audit trail untuk tracking: batch mana yang dikurangi berapa kg untuk order tertentu. Dibuat saat Order berubah status ke `in_production`, berdasarkan batch yang sudah dipilih user di BOM.
 
 **MonthlySummary** (Ringkasan Bulanan)
 Tabel precompute untuk chart historis. *Tidak dipakai untuk dashboard real-time* — dashboard dan laporan menghitung langsung dari `orders + costing` yang berstatus `shipped`.
@@ -41,13 +41,13 @@ Tabel precompute untuk chart historis. *Tidak dipakai untuk dashboard real-time*
 `materialCost + laborCost`. Tidak termasuk ongkir.
 
 **Material Cost**
-`qtyActual × pricePerKg` — menggunakan harga rata-rata FIFO dari sisa stok batch.
+`qtyRequired × pricePerKg` — dihitung dari harga batch pembelian spesifik yang dipilih manual oleh user pada saat menyusun BOM (bukan averaging).
 
 **Waste**
-Sisa potongan kain. Masuk HPP (Opsi A). Dicatat sebagai `wastePct` di BomItem.
+Input persentase waste dihilangkan pada alur pemilihan BOM baru (`qtyActual = qtyRequired`).
 
-**FIFO Deduction**
-Proses pengurangan stok saat Order masuk `in_production`. Batch tertua dikurangi dulu. Jika stok tidak cukup, sistem menolak dengan error 400.
+**Batch Selection**
+User memilih batch secara manual saat membuat BOM. Setiap BOM item terikat ke `batchId` spesifik. Saat order masuk produksi, stok dipotong dari batch yang sudah dipilih tersebut.
 
 **Profit**
 `sellingPrice - hpp - shippingCost`. Hanya dihitung untuk Order berstatus `shipped`.
@@ -121,3 +121,9 @@ Breakdown customer berdasarkan profit: share %, jumlah order, dan total profit
 - ❌ "inventory" (untuk jenis kain) → gunakan `Fabric`
 - ❌ "stock" → gunakan `qtyRemaining` atau `stok` (bahasa Indonesia, konteks UI)
 - ❌ "cost" tanpa qualifier → spesifikasikan: `materialCost`, `laborCost`, `hpp`, atau `shippingCost`
+
+**Biaya Lain** (OtherCost)
+Biaya produksi di luar material kain dan upah, seperti sablon, resleting, dan aksesoris lainnya. Disimpan per-item di tabel `OrderCostItem` (label, amount, keterangan) dan totalnya di-bake ke `OrderCosting.otherCostTotal`. Masuk ke HPP sehingga markup berlaku atas biaya lain.
+
+**OrderCostItem** (Item Biaya Lain)
+Satu baris biaya lain dalam satu Order. Berisi `label`, `amount` (nominal total), dan `keterangan` opsional.

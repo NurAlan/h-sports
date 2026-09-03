@@ -96,22 +96,22 @@ export function GlobalTourDialog({ open, onOpenChange }: GlobalTourDialogProps) 
                 type="button"
                 onClick={() => setCurrentStep(idx)}
                 aria-label={`Lompat ke langkah ${s.stepNumber}`}
-                className={`h-1.5 sm:h-2 flex-1 rounded-full transition-all duration-300 ${
+                className={`h-1.5 sm:h-2 flex-1 rounded transition-all duration-300 ${
                   idx === currentStep
                     ? "bg-primary"
                     : idx < currentStep
                     ? "bg-primary/40"
-                    : "bg-gray-200"
+                    : "bg-stone-200"
                 }`}
               />
             ))}
           </div>
 
           {/* Slide Card Content */}
-          <div className="rounded-xl sm:rounded-2xl border-2 border-blue-100 bg-blue-50/40 p-3 sm:p-4 space-y-2.5 sm:space-y-3 shadow-2xs">
+          <div className="rounded-lg border-2 border-blue-200 bg-blue-50/40 p-3 sm:p-4 space-y-2.5 sm:space-y-3 shadow-2xs">
             {/* Header Slide */}
             <div className="flex items-start gap-2.5 sm:gap-3">
-              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-white border border-blue-200 text-xl sm:text-2xl shadow-2xs">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-lg bg-white border border-blue-200 text-xl sm:text-2xl shadow-2xs">
                 {slide.icon}
               </div>
               <div className="min-w-0 flex-1">

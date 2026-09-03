@@ -11,8 +11,10 @@ export async function GET(request: Request) {
   const startDate = searchParams.get("start");
   const endDate = searchParams.get("end");
 
-  // Filter orders by date range
-  const where: Record<string, unknown> = {};
+  // Hanya order shipped yang masuk laporan keuangan
+  const where: Record<string, unknown> = {
+    status: "shipped",
+  };
   if (startDate || endDate) {
     where.orderDate = {
       ...(startDate ? { gte: new Date(startDate) } : {}),

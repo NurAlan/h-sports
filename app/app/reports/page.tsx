@@ -20,16 +20,35 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
+function toYMD(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
 function getRangeForPreset(preset: PeriodPreset): { start: string; end: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-indexed
   switch (preset) {
     case "thisMonth":
-      return { start: "2026-08-01", end: "2026-08-31" };
+      return {
+        start: toYMD(new Date(y, m, 1)),
+        end: toYMD(new Date(y, m + 1, 0)),
+      };
     case "lastMonth":
-      return { start: "2026-07-01", end: "2026-07-31" };
+      return {
+        start: toYMD(new Date(y, m - 1, 1)),
+        end: toYMD(new Date(y, m, 0)),
+      };
     case "last3Months":
-      return { start: "2026-06-01", end: "2026-08-31" };
+      return {
+        start: toYMD(new Date(y, m - 2, 1)),
+        end: toYMD(new Date(y, m + 1, 0)),
+      };
     default:
-      return { start: "2026-08-01", end: "2026-08-31" };
+      return {
+        start: toYMD(new Date(y, m, 1)),
+        end: toYMD(new Date(y, m + 1, 0)),
+      };
   }
 }
 
@@ -40,9 +59,8 @@ export default function ReportsHubPage() {
   const [preset, setPreset] = useState<PeriodPreset>("thisMonth");
   const [tab, setTab] = useState<TabKey>("keuangan");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const initial = getRangeForPreset("thisMonth");
-  const [startDate, setStartDate] = useState(initial.start);
-  const [endDate, setEndDate] = useState(initial.end);
+  const [startDate, setStartDate] = useState(() => getRangeForPreset("thisMonth").start);
+  const [endDate, setEndDate] = useState(() => getRangeForPreset("thisMonth").end);
 
   useEffect(() => {
     api
@@ -57,7 +75,13 @@ export default function ReportsHubPage() {
 
   const isCustom = preset === "custom";
   const range = useMemo(
-    () => (preset === "custom" ? { start: startDate || "2026-01-01", end: endDate || "2026-12-31" } : getRangeForPreset(preset)),
+    () => {
+      if (preset === "custom") {
+        const fallback = getRangeForPreset("thisMonth");
+        return { start: startDate || fallback.start, end: endDate || fallback.end };
+      }
+      return getRangeForPreset(preset);
+    },
     [preset, startDate, endDate]
   );
   const prevRange = useMemo(() => ({ start: shiftMonth(range.start, -1), end: shiftMonth(range.end, -1) }), [range]);
@@ -96,7 +120,7 @@ export default function ReportsHubPage() {
               isCustom={isCustom}
               onReset={handleReset}
             />
-            <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="mt-3 pt-3 border-t border-stone-200">
               <p className="text-[11px] text-muted-foreground mb-2">Status</p>
               <StatusFilter
                 options={ORDER_STATUS_OPTIONS}
@@ -107,7 +131,7 @@ export default function ReportsHubPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-4">
+          <div role="tablist" aria-label="Jenis laporan" className="flex gap-2 mb-4">
             {TABS.map((t) => {
               const Icon = t.icon;
               const active = tab === t.key;
@@ -115,12 +139,16 @@ export default function ReportsHubPage() {
                 <button
                   key={t.key}
                   type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-controls={`tabpanel-${t.key}`}
+                  id={`tab-${t.key}`}
                   onClick={() => setTab(t.key)}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-1.5 rounded-xl border py-2.5 min-h-[44px] text-sm font-semibold transition-all duration-150 active:scale-95 shadow-xs",
+                    "flex-1 flex items-center justify-center gap-1.5 rounded-lg border py-2.5 min-h-[44px] text-sm font-semibold transition-all duration-150 active:scale-95 shadow-xs",
                     active
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50"
+                      : "bg-white text-muted-foreground border-stone-300 hover:bg-stone-50"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -130,11 +158,17 @@ export default function ReportsHubPage() {
             })}
           </div>
 
-          {tab === "keuangan" && (
-            <KeuanganView orders={allOrders} summaries={summaries} range={range} prevRange={prevRange} statusFilter={statusFilter} />
-          )}
-          {tab === "produksi" && <ProductionReportView startDate={startDate} endDate={endDate} statusFilter={statusFilter} />}
-          {tab === "customer" && <CustomerView orders={allOrders} range={range} statusFilter={statusFilter} />}
+          <div
+            role="tabpanel"
+            id={`tabpanel-${tab}`}
+            aria-labelledby={`tab-${tab}`}
+          >
+            {tab === "keuangan" && (
+              <KeuanganView orders={allOrders} summaries={summaries} range={range} prevRange={prevRange} statusFilter={statusFilter} />
+            )}
+            {tab === "produksi" && <ProductionReportView startDate={startDate} endDate={endDate} statusFilter={statusFilter} />}
+            {tab === "customer" && <CustomerView orders={allOrders} range={range} statusFilter={statusFilter} />}
+          </div>
         </>
       )}
     </div>

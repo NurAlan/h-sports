@@ -6,10 +6,10 @@ export interface StatusConfig {
 }
 
 export const ORDER_STATUS: Record<string, StatusConfig> = {
-  draft: { label: "Draft", className: "bg-secondary text-secondary-foreground" },
-  in_production: { label: "Produksi", className: "bg-blue-100 text-blue-700" },
-  qc: { label: "QC", className: "bg-amber-100 text-amber-700" },
-  shipped: { label: "Selesai", className: "bg-green-100 text-green-700" },
+  draft: { label: "Draft", className: "bg-stone-100 text-stone-600 border border-stone-300" },
+  in_production: { label: "Produksi", className: "bg-indigo-50 text-indigo-700 border border-indigo-200" },
+  qc: { label: "QC", className: "bg-indigo-50 text-indigo-700 border border-indigo-200" },
+  shipped: { label: "Selesai", className: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
 };
 
 export const BATCH_STATUS: Record<string, StatusConfig> = {

@@ -191,7 +191,7 @@ export function CostingCalculatorDialog({
             {/* Material cost (readonly) */}
             <div className="grid gap-2">
               <Label>Material Cost (dari BOM)</Label>
-              <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 text-base font-semibold">
+              <div className="rounded-lg bg-stone-100 border border-stone-200 px-3 py-2 text-base font-semibold">
                 {bomLoading ? (
                   <span className="text-muted-foreground animate-pulse">Memuat...</span>
                 ) : (
@@ -231,7 +231,7 @@ export function CostingCalculatorDialog({
               )}
 
               {otherCosts.map((row) => (
-                <div key={row.id} className="rounded-xl border border-gray-200 bg-gray-50/90 p-3 grid gap-2.5 shadow-xs">
+                <div key={row.id} className="rounded-lg border border-stone-200 bg-stone-50/90 p-3 grid gap-2.5 shadow-xs">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 min-w-0">
                       <label className="text-[11px] font-medium text-muted-foreground block mb-1">Nama biaya *</label>
@@ -331,10 +331,13 @@ export function CostingCalculatorDialog({
                 value={shippingCost}
                 onChange={setShippingCost}
               />
+              <p className="text-xs text-muted-foreground">
+                Ongkir tidak masuk HPP, tapi mengurangi profit final
+              </p>
             </div>
 
             {/* Hasil kalkulasi live */}
-            <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-2">
+            <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 space-y-2">
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Material Cost</span>
                 <span>{formatRupiah(materialCost)}</span>
@@ -349,7 +352,7 @@ export function CostingCalculatorDialog({
                   <span>{formatRupiah(otherCostTotal)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-semibold border-t border-gray-200 pt-1.5">
+              <div className="flex justify-between text-base font-semibold border-t border-stone-200 pt-1.5">
                 <span>HPP</span>
                 <span>{formatRupiah(hpp)}</span>
               </div>

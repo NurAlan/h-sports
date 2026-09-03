@@ -69,7 +69,7 @@ function DialogContent({
             ? [
                 // Mobile & Desktop: Centered modal with safe viewport margins
                 "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
-                "w-[calc(100vw-1.5rem)] max-w-[500px] max-h-[85dvh] rounded-2xl border border-gray-200",
+                "w-[calc(100vw-1.5rem)] max-w-[500px] max-h-[85dvh] rounded-xl border border-stone-200",
                 "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
                 "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
               ]
@@ -77,7 +77,7 @@ function DialogContent({
                 // Mobile: Bottom sheet
                 "max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:w-full max-sm:max-h-[88dvh] max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:border-t max-sm:border-x-0 max-sm:border-b-0",
                 // Desktop: Centered modal
-                "sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-[480px] sm:max-h-[85vh] sm:rounded-2xl sm:border border-gray-200",
+                "sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-[480px] sm:max-h-[85vh] sm:rounded-xl sm:border border-stone-200",
                 // Animasi masuk
                 "data-[state=open]:animate-in data-[state=open]:fade-in-0 max-sm:data-[state=open]:slide-in-from-bottom-8 sm:data-[state=open]:zoom-in-95 sm:data-[state=open]:slide-in-from-bottom-2",
                 "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 max-sm:data-[state=closed]:slide-out-to-bottom-8 sm:data-[state=closed]:zoom-out-95",
@@ -93,7 +93,7 @@ function DialogContent({
         )}
         {children}
         {/* Tombol close */}
-        <DialogPrimitive.Close className="absolute right-3.5 top-3.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-all duration-150 hover:bg-gray-200 hover:text-foreground active:scale-90 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
+        <DialogPrimitive.Close className="absolute right-3.5 top-3.5 z-10 flex h-8 w-8 items-center justify-center rounded bg-stone-100 text-stone-600 transition-all duration-150 hover:bg-stone-200 hover:text-foreground active:scale-90 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
           <XIcon className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -144,7 +144,7 @@ function DialogFooter({
       data-slot="dialog-footer"
       className={cn(
         "sticky bottom-0 z-10 flex flex-row items-center justify-end gap-2.5 shrink-0",
-        "border-t border-gray-100 bg-white/95 backdrop-blur-sm px-5 py-3.5 safe-area-bottom",
+        "border-t border-gray-100 bg-white/95 backdrop-blur-sm px-5 pt-4 pb-5 max-sm:pb-6",
         className
       )}
       {...props}

@@ -34,17 +34,17 @@ interface ToastAPI {
 const ToastContext = createContext<ToastAPI | null>(null);
 
 const ICONS: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />,
-  error: <XCircle className="h-4 w-4 text-red-500 shrink-0" />,
-  warning: <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />,
-  info: <Info className="h-4 w-4 text-blue-500 shrink-0" />,
+  success: <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />,
+  error: <XCircle className="h-4 w-4 text-red-600 shrink-0" />,
+  warning: <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />,
+  info: <Info className="h-4 w-4 text-sky-600 shrink-0" />,
 };
 
 const BORDER: Record<ToastType, string> = {
-  success: "border-green-200",
-  error: "border-red-200",
-  warning: "border-amber-200",
-  info: "border-blue-200",
+  success: "border-l-4 border-l-emerald-500 border-stone-200",
+  error: "border-l-4 border-l-red-600 border-stone-200",
+  warning: "border-l-4 border-l-amber-500 border-stone-200",
+  info: "border-l-4 border-l-sky-500 border-stone-200",
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -84,7 +84,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-center gap-2.5 rounded-xl border bg-white px-3.5 py-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 ${BORDER[t.type]}`}
+            className={`pointer-events-auto flex items-center gap-2.5 rounded-lg border bg-white px-3.5 py-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200 ${BORDER[t.type]}`}
           >
             {ICONS[t.type]}
             <p className="flex-1 text-base font-medium text-foreground">
@@ -94,7 +94,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => dismiss(t.id)}
               aria-label="Tutup notifikasi"
-              className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>

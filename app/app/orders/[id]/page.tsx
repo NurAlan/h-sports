@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { AddBOMItemDialog } from "@/components/dialogs/add-bom-item-dialog";
 import { UpdateTimelineDialog } from "@/components/dialogs/update-timeline-dialog";
 import { CostingCalculatorDialog } from "@/components/dialogs/costing-calculator-dialog";
+import { EditCustomerDialog } from "@/components/dialogs/edit-customer-dialog";
 import { MenuGuide } from "@/components/tutorial/menu-guide";
 import { ORDER_STATUS } from "@/lib/status-config";
 
@@ -47,21 +48,21 @@ const NEXT_ACTION: Record<string, { label: string; next: string }> = {
 function getStageIcon(status: string) {
   switch (status) {
     case "completed":
-      return <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />;
+      return <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />;
     case "in_progress":
-      return <Clock className="h-5 w-5 text-blue-600 shrink-0 animate-pulse" />;
+      return <Clock className="h-5 w-5 text-sky-600 shrink-0 motion-safe:animate-pulse" />;
     default:
-      return <Circle className="h-5 w-5 text-gray-400 shrink-0" />;
+      return <Circle className="h-5 w-5 text-stone-400 shrink-0" />;
   }
 }
 
 function getStageBadge(status: string) {
   const variants: Record<string, { label: string; className: string }> = {
-    completed: { label: "Selesai", className: "bg-green-100 text-green-800 border-green-300 font-semibold" },
-    in_progress: { label: "Sedang Dikerjakan", className: "bg-blue-100 text-blue-800 border-blue-300 font-semibold" },
-    not_started: { label: "Belum Dimulai", className: "bg-gray-100 text-gray-700 border-gray-300" },
+    completed: { label: "Selesai", className: "bg-emerald-100 text-emerald-800 border-emerald-300 font-semibold" },
+    in_progress: { label: "Sedang Dikerjakan", className: "bg-sky-100 text-sky-800 border-sky-300 font-semibold" },
+    not_started: { label: "Belum Dimulai", className: "bg-stone-100 text-stone-700 border-stone-300" },
   };
-  const config = variants[status] || { label: status, className: "bg-gray-100 text-gray-700" };
+  const config = variants[status] || { label: status, className: "bg-stone-100 text-stone-700" };
   return (
     <Badge variant="secondary" className={`text-xs border px-2.5 py-0.5 ${config.className}`}>
       {config.label}
@@ -99,6 +100,7 @@ export default function OrderDetailPage() {
       id: string;
       fabricId: string;
       fabricColorId: string;
+      batchId?: string | null;
       fabricName: string;
       colorName: string;
       qtyRequired: number;
@@ -106,6 +108,12 @@ export default function OrderDetailPage() {
       qtyActual: number;
       pricePerKg: number;
       materialCost: number;
+      batchInfo?: {
+        purchaseDate: string;
+        supplierName: string;
+        pricePerKg: number;
+        qtyRemaining: number;
+      } | null;
     }>;
     timelines?: Array<{
       id: string;
@@ -153,23 +161,34 @@ export default function OrderDetailPage() {
   const [bomOpen, setBomOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [costingOpen, setCostingOpen] = useState(false);
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const toast = useToast();
   type BomItemType = {
     id: string;
     fabricId: string;
+    fabricColorId?: string;
+    batchId?: string | null;
     fabricName: string;
+    colorName?: string;
     qtyRequired: number;
-    wastePct: number;
-    qtyActual: number;
+    wastePct?: number;
+    qtyActual?: number;
     pricePerKg: number;
     materialCost: number;
+    batchInfo?: {
+      purchaseDate: string;
+      supplierName: string;
+      pricePerKg: number;
+      qtyRemaining: number;
+    } | null;
   };
   const [editBomItem, setEditBomItem] = useState<BomItemType | null>(null);
   const [deleteBomItem, setDeleteBomItem] = useState<BomItemType | null>(null);
-  const [editBomForm, setEditBomForm] = useState({ qtyRequired: "", wastePct: "" });
+  const [editBomForm, setEditBomForm] = useState({ qtyRequired: "" });
   const [editBomLoading, setEditBomLoading] = useState(false);
   const [deleteBomLoading, setDeleteBomLoading] = useState(false);
+  const [highlightedBomId, setHighlightedBomId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<typeof order>(`/api/orders/${params.id}`)
@@ -295,7 +314,7 @@ export default function OrderDetailPage() {
       });
       toast.success(
         nextAction.next === "in_production"
-          ? `Order ${order.orderNumber} masuk produksi — stok dipotong (FIFO)`
+          ? `Order ${order.orderNumber} masuk produksi — stok dipotong dari batch yang dipilih`
           : `Order ${order.orderNumber} → ${ORDER_STATUS[nextAction.next]?.label ?? nextAction.next}`
       );
       // Refetch detail order — timeline auto-created di server langsung tampil
@@ -313,35 +332,29 @@ export default function OrderDetailPage() {
     setEditBomItem(item);
     setEditBomForm({
       qtyRequired: String(item.qtyRequired),
-      wastePct: String(item.wastePct),
     });
   };
 
   /** Simpan perubahan BOM */
   const handleUpdateBom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editBomItem) return;
+    if (!editBomItem || !order) return;
     setEditBomLoading(true);
     try {
-      const updated = await api.patch<BomItemType>(
+      await api.patch<BomItemType>(
         `/api/orders/${order.id}/bom/${editBomItem.id}`,
         {
           qtyRequired: parseFloat(editBomForm.qtyRequired),
-          wastePercentage: parseFloat(editBomForm.wastePct),
         }
-      );
-      setOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              bomItems: (prev.bomItems ?? []).map((it) =>
-                it.id === editBomItem.id ? { ...it, ...updated } : it
-              ),
-            }
-          : prev
       );
       toast.success(`Bahan ${editBomItem.fabricName} diperbarui`);
       setEditBomItem(null);
+      // Refetch detail order agar costing dan BOM sinkron
+      const fresh = await api.get<typeof order>(`/api/orders/${order.id}`);
+      setOrder(fresh);
+      // Flash highlight pada card BOM yang baru diperbarui
+      setHighlightedBomId(editBomItem.id);
+      setTimeout(() => setHighlightedBomId(null), 1500);
     } catch (err) {
       toast.error(`Gagal update: ${(err as Error).message}`);
     } finally {
@@ -351,17 +364,15 @@ export default function OrderDetailPage() {
 
   /** Hapus BOM item */
   const handleDeleteBom = async () => {
-    if (!deleteBomItem) return;
+    if (!deleteBomItem || !order) return;
     setDeleteBomLoading(true);
     try {
       await api.del(`/api/orders/${order.id}/bom/${deleteBomItem.id}`);
-      setOrder((prev) =>
-        prev
-          ? { ...prev, bomItems: (prev.bomItems ?? []).filter((it) => it.id !== deleteBomItem.id) }
-          : prev
-      );
       toast.success(`Bahan ${deleteBomItem.fabricName} dihapus`);
       setDeleteBomItem(null);
+      // Refetch detail order agar costing dan BOM sinkron
+      const fresh = await api.get<typeof order>(`/api/orders/${order.id}`);
+      setOrder(fresh);
     } catch (err) {
       toast.error(`Gagal hapus: ${(err as Error).message}`);
     } finally {
@@ -380,13 +391,24 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Header Order */}
-      <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+      <Card className="mb-4 card-shadow bg-white border border-stone-200 hover:border-stone-300 transition-all">
         <CardContent className="pt-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xl font-bold text-foreground">{order.orderNumber}</p>
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-xl font-bold text-foreground truncate">{order.customerName}</p>
+              <button
+                type="button"
+                onClick={() => setEditCustomerOpen(true)}
+                aria-label="Edit nama customer"
+                title="Edit nama customer"
+                className="p-1 rounded-md text-muted-foreground hover:bg-white hover:text-primary transition-colors shrink-0"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            </div>
             <Badge variant="secondary" className={status.className}>{status.label}</Badge>
           </div>
-          <p className="text-base text-muted-foreground mb-1">{order.customerName}</p>
+          <p className="text-base text-muted-foreground mb-1">{order.orderNumber}</p>
           {order.customerContact && (
             <p className="text-sm text-muted-foreground mb-1">{order.customerContact}</p>
           )}
@@ -411,7 +433,7 @@ export default function OrderDetailPage() {
                             ? "bg-green-500 border-green-500 text-white"
                             : isCurrent
                               ? "bg-primary border-primary text-white"
-                              : "bg-white border-gray-300 text-gray-400"
+                              : "bg-white border-stone-300 text-stone-400"
                         }`}
                       >
                         {isDone ? "✓" : i + 1}
@@ -502,7 +524,7 @@ export default function OrderDetailPage() {
             </div>
             {(() => {
               const days = order.deadline ? daysUntil(order.deadline) : 999;
-              let badgeClass = "bg-gray-200 text-gray-700";
+              let badgeClass = "bg-stone-200 text-stone-700";
               if (order.status === "shipped") badgeClass = "bg-green-200 text-green-800";
               else if (days < 0) badgeClass = "bg-red-700 text-white";
               else if (days <= 1) badgeClass = "bg-red-500 text-white";
@@ -524,7 +546,7 @@ export default function OrderDetailPage() {
       </Card>
 
       {/* 1. BOM — Komposisi Bahan */}
-      <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+      <Card className="mb-4 card-shadow bg-white border border-stone-200 hover:border-stone-300 transition-all">
         <CardHeader className="pb-2 flex-row items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" />
@@ -550,29 +572,46 @@ export default function OrderDetailPage() {
             return (
             <div
               key={item.id}
-              className={`pb-3 border-b last:border-0 last:pb-0 rounded-lg px-2 -mx-2 transition-all duration-300 ${
-                isShort
-                  ? "border-red-300 bg-red-50 animate-pulse"
-                  : "border-border/60"
+              className={`pb-3 border-b last:border-0 last:pb-0 rounded-lg px-2 -mx-2 transition-all duration-700 ${
+                highlightedBomId === item.id
+                  ? "bg-primary/10 ring-2 ring-primary/30"
+                  : isShort
+                    ? "border-red-300 bg-red-50 animate-pulse"
+                    : "border-border/60"
               }`}
             >
               <div className="flex items-center justify-between mb-1 gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  {isShort && (
-                    <span className="shrink-0 text-red-600" title="Stok tidak cukup">
-                      ⚠️
-                    </span>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {isShort && (
+                      <span className="shrink-0 text-red-600" title="Stok tidak cukup">
+                        ⚠️
+                      </span>
+                    )}
+                    <p className={`text-base font-semibold truncate ${isShort ? "text-red-700" : "text-foreground"}`}>
+                      {item.fabricName} — {item.colorName}
+                    </p>
+                  </div>
+                  {item.batchInfo ? (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-primary font-medium mt-1">
+                      <span className="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                        Batch: {formatDate(item.batchInfo.purchaseDate)}
+                      </span>
+                      <span>{formatRupiah(item.pricePerKg)}/kg</span>
+                      {item.batchInfo.supplierName && (
+                        <span className="text-muted-foreground">• {item.batchInfo.supplierName}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-0.5">{formatRupiah(item.pricePerKg)}/kg</p>
                   )}
-                  <p className={`text-base font-semibold truncate ${isShort ? "text-red-700" : "text-foreground"}`}>
-                    {item.fabricName} — {item.colorName}
-                  </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => openEditBom(item)}
                     disabled={!isDraft}
-                    className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg transition-all duration-150 active:scale-90 ${!isDraft ? "opacity-30 cursor-not-allowed text-muted-foreground" : "bg-blue-50 text-primary border border-blue-200/80 hover:bg-blue-100 hover:text-blue-700 shadow-xs"}`}
+                    className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg transition-all duration-150 active:scale-90 ${!isDraft ? "opacity-30 cursor-not-allowed text-muted-foreground" : "bg-amber-50 text-primary border border-primary/30 hover:bg-amber-100 hover:text-amber-700 shadow-xs"}`}
                     title={!isDraft ? "BOM tidak bisa diubah setelah produksi dimulai" : "Edit bahan"}
                     aria-label="Edit bahan"
                   >
@@ -590,14 +629,9 @@ export default function OrderDetailPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span>{item.qtyRequired} kg bersih</span>
-                <span>Waste: {item.wastePct}%</span>
-                <span>Pakai: {item.qtyActual} kg</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{formatRupiah(item.pricePerKg)}/kg</p>
-                <p className="text-base font-bold">{formatRupiah(item.materialCost)}</p>
+              <div className="flex items-center justify-between text-sm mt-1.5 pt-1.5 border-t border-dashed border-border/60">
+                <span className="text-muted-foreground">Kebutuhan: <strong className="text-foreground font-semibold">{item.qtyRequired} kg</strong></span>
+                <span className="text-base font-bold text-foreground">{formatRupiah(item.materialCost)}</span>
               </div>
               {isShort && (
                 <p className="text-[11px] text-red-600 font-medium mt-1 bg-red-100 rounded px-2 py-1">
@@ -620,7 +654,7 @@ export default function OrderDetailPage() {
       </Card>
 
       {/* 2. Costing — HPP & Harga Jual */}
-      <Card className="mb-4 card-shadow-lg bg-gray-100 border-2 border-gray-300 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+      <Card className="mb-4 card-shadow bg-white border border-stone-200 hover:border-stone-300 transition-all">
         <CardHeader className="pb-2 flex-row items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
@@ -708,8 +742,8 @@ export default function OrderDetailPage() {
       </Card>
 
       {/* 3. Timeline Produksi — Accessible Vertical Stepper */}
-      <Card className="card-shadow-lg bg-white border-2 border-gray-200 hover:shadow-xl transition-all">
-        <CardHeader className="pb-3 flex-row items-center justify-between border-b border-gray-100">
+      <Card className="card-shadow bg-white border border-stone-200 hover:border-stone-300 transition-all">
+        <CardHeader className="pb-3 flex-row items-center justify-between border-b border-stone-100">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
               <Clock className="h-5 w-5" />
@@ -727,12 +761,13 @@ export default function OrderDetailPage() {
             )}
             <Button
               size="sm"
-              className="min-h-[38px] px-3.5 gap-1.5 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-[38px] px-3.5 gap-1.5 bg-blue-600 text-white font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => setTimelineOpen(true)}
               disabled={isDraft}
               title={isDraft ? "Mulai produksi dulu untuk update timeline" : undefined}
             >
-              Update
+              <Clock className="h-4 w-4" />
+              Update Timeline
             </Button>
           </div>
         </CardHeader>
@@ -756,7 +791,7 @@ export default function OrderDetailPage() {
           )}
 
           {timeline.length > 0 && (
-            <div className="relative pl-6 space-y-4 before:absolute before:left-[11px] before:top-2 before:bottom-3 before:w-0.5 before:bg-gray-200">
+            <div className="relative pl-6 space-y-4 before:absolute before:left-[11px] before:top-2 before:bottom-3 before:w-0.5 before:bg-stone-200">
               {timeline.map((stage) => {
                 const duration = calculateDuration(stage.actualStart, stage.actualEnd);
                 const isCompleted = stage.status === "completed";
@@ -772,7 +807,11 @@ export default function OrderDetailPage() {
                     {/* Content Box */}
                     <div className={cn(
                       "rounded-xl border p-3 transition-all",
-                      isInProgress ? "border-blue-300 bg-blue-50/50 shadow-xs" : isCompleted ? "border-gray-200 bg-gray-50/70" : "border-gray-200 bg-white"
+                      isInProgress 
+                        ? "border-sky-300 bg-sky-50/50 shadow-xs animate-production-pulse" 
+                        : isCompleted 
+                          ? "border-stone-200 bg-stone-50/70" 
+                          : "border-stone-200 bg-white animate-production-blink"
                     )}>
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <span className="text-sm font-bold text-foreground capitalize truncate">
@@ -801,17 +840,17 @@ export default function OrderDetailPage() {
 
                       {/* Duration & status caption */}
                       {(duration || isInProgress || stage.estimatedHrs) && (
-                        <div className="mt-2 flex items-center justify-between text-[11px] border-t border-gray-200/80 pt-1.5">
+                        <div className="mt-2 flex items-center justify-between text-[11px] border-t border-stone-200/80 pt-1.5">
                           <span className="text-muted-foreground">
                             {stage.estimatedHrs ? `Estimasi ±${stage.estimatedHrs} jam` : ""}
                           </span>
                           {duration && (
-                            <span className="font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                            <span className="font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                               Durasi: {duration}
                             </span>
                           )}
                           {isInProgress && !duration && (
-                            <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full animate-pulse">
+                            <span className="font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded motion-safe:animate-pulse">
                               Sedang dikerjakan
                             </span>
                           )}
@@ -832,12 +871,16 @@ export default function OrderDetailPage() {
         onOpenChange={setBomOpen}
         orderId={order.id}
         orderNumber={order.orderNumber}
-        existingColorIds={(order.bomItems ?? []).map((b) => b.fabricColorId)}
-        onAdded={(item) => {
-          // Tambah langsung ke state — tampil tanpa reload (rollback otomatis jika gagal)
-          setOrder((prev) =>
-            prev ? { ...prev, bomItems: [...(prev.bomItems ?? []), item] } : prev
-          );
+        existingBatchIds={(order.bomItems ?? []).map((b) => b.batchId).filter(Boolean) as string[]}
+        onAdded={async (newItem) => {
+          // Refetch data order agar BOM dan costing terbaru sinkron
+          const fresh = await api.get<typeof order>(`/api/orders/${order.id}`);
+          setOrder(fresh);
+          // Flash highlight pada card BOM baru
+          if (newItem?.id) {
+            setHighlightedBomId(newItem.id);
+            setTimeout(() => setHighlightedBomId(null), 1500);
+          }
         }}
       />
       <UpdateTimelineDialog
@@ -858,37 +901,60 @@ export default function OrderDetailPage() {
         }}
       />
       <CostingCalculatorDialog open={costingOpen} onOpenChange={setCostingOpen} orderId={order.id} orderNumber={order.orderNumber} />
+      <EditCustomerDialog
+        open={editCustomerOpen}
+        onOpenChange={setEditCustomerOpen}
+        orderId={order.id}
+        initialCustomerName={order.customerName}
+        initialCustomerContact={order.customerContact}
+        onSuccess={(updated) => {
+          setOrder((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  customerName: updated.customerName,
+                  customerContact: updated.customerContact ?? null,
+                }
+              : prev
+          );
+        }}
+      />
 
       {/* Dialog edit BOM */}
       <Dialog open={!!editBomItem} onOpenChange={(o) => !o && setEditBomItem(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Edit Bahan BOM</DialogTitle>
-            <DialogDescription>{editBomItem?.fabricName}</DialogDescription>
+            <DialogDescription>
+              {editBomItem?.fabricName} — {editBomItem?.colorName}
+              {editBomItem?.batchInfo && (
+                <span className="block text-xs text-primary font-medium mt-0.5">
+                  Batch: {formatDate(editBomItem.batchInfo.purchaseDate)} ({formatRupiah(editBomItem.pricePerKg)}/kg)
+                </span>
+              )}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateBom} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <DialogBody>
               <div className="grid gap-4 py-2">
-                <div className="grid gap-2">
-                  <Label>Jumlah Bersih (kg)</Label>
+                <div className="grid gap-1.5">
+                  <Label>Jumlah Satuan (kg) *</Label>
                   <Input
                     type="number"
                     step="0.1"
-                    min="0"
+                    min="0.1"
                     value={editBomForm.qtyRequired}
-                    onChange={(e) => setEditBomForm((f) => ({ ...f, qtyRequired: e.target.value }))}
+                    onChange={(e) => setEditBomForm({ qtyRequired: e.target.value })}
                     required
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Waste (%)</Label>
-                  <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={editBomForm.wastePct}
-                    onChange={(e) => setEditBomForm((f) => ({ ...f, wastePct: e.target.value }))}
-                  />
+                  {editBomItem && (
+                    <p className="text-xs text-muted-foreground">
+                      Harga: {formatRupiah(editBomItem.pricePerKg)}/kg • Total Baru:{" "}
+                      <span className="font-semibold text-primary">
+                        {formatRupiah((parseFloat(editBomForm.qtyRequired) || 0) * editBomItem.pricePerKg)}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
             </DialogBody>

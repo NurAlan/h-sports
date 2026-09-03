@@ -105,7 +105,7 @@ export function SearchableSelect<T>({
             {/* Dropdown panel */}
             <div className="absolute z-50 mt-1 w-full bg-white border border-border rounded-md shadow-lg max-h-80 overflow-hidden flex flex-col">
               {/* Search input */}
-              <div className="p-2 border-b border-border flex items-center gap-2 bg-gray-50">
+              <div className="p-2 border-b border-border flex items-center gap-2 bg-stone-50">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
@@ -132,7 +132,7 @@ export function SearchableSelect<T>({
                         key={itemValue}
                         type="button"
                         onClick={() => handleSelect(itemValue)}
-                        className={`w-full px-3 py-2 text-left text-base hover:bg-gray-100 transition-colors ${
+                        className={`w-full px-3 py-2 text-left text-base hover:bg-stone-100 transition-colors ${
                           isSelected ? "bg-primary/10 text-primary font-medium" : "text-foreground"
                         }`}
                       >

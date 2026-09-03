@@ -41,7 +41,7 @@ export function CurrencyInput({
       value={display}
       onChange={handleChange}
       className={cn(
-        "h-11 md:h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        "h-11 md:h-10 w-full rounded-lg border border-stone-300 bg-white px-3 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
         className
       )}
     />

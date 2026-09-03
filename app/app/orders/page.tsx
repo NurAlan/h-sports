@@ -26,8 +26,10 @@ import {
   X,
   Trash2,
   ShoppingCart,
+  Pencil,
 } from "lucide-react";
 import { CreateOrderDialog } from "@/components/dialogs/create-order-dialog";
+import { EditCustomerDialog } from "@/components/dialogs/edit-customer-dialog";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   Dialog,
@@ -51,57 +53,50 @@ const statusConfig: Record<
 > = {
   draft: {
     label: "Draft",
-    badgeClass: "bg-gray-300 text-gray-800",
+    badgeClass: "bg-stone-100 text-stone-600 border border-stone-300",
     icon: FileText,
-    iconClass: "bg-gray-400 text-white",
-    textClass: "text-gray-700",
+    iconClass: "bg-stone-600 text-white",
+    textClass: "text-stone-600",
   },
   in_production: {
     label: "Produksi",
-    badgeClass: "bg-blue-200 text-blue-800",
+    badgeClass: "bg-indigo-50 text-indigo-700 border border-indigo-200",
     icon: Wrench,
-    iconClass: "bg-blue-500 text-white",
-    textClass: "text-blue-700",
+    iconClass: "bg-indigo-600 text-white",
+    textClass: "text-indigo-700",
   },
   qc: {
     label: "QC",
-    badgeClass: "bg-amber-200 text-amber-800",
+    badgeClass: "bg-indigo-50 text-indigo-700 border border-indigo-200",
     icon: CheckCircle2,
-    iconClass: "bg-amber-500 text-white",
-    textClass: "text-amber-700",
+    iconClass: "bg-indigo-600 text-white",
+    textClass: "text-indigo-700",
   },
   shipped: {
     label: "Selesai",
-    badgeClass: "bg-green-200 text-green-800",
+    badgeClass: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     icon: Truck,
-    iconClass: "bg-green-500 text-white",
-    textClass: "text-green-700",
+    iconClass: "bg-emerald-600 text-white",
+    textClass: "text-emerald-700",
   },
 };
 
 // Filter options reuse shared ORDER_STATUS_OPTIONS
 
-/** Warna card berdasarkan deadline:
- *  - Shipped/selesai : hijau
- *  - Melewati deadline: merah gelap
- *  - Deadline <= 1 hari : merah
- *  - Deadline < 3 hari : oranye
- *  - Aman : abu-abu
- */
 function getDeadlineCardClass(days: number, isShipped: boolean) {
-  if (isShipped) return "bg-green-100 border-green-300";
-  if (days < 0) return "bg-red-300 border-red-500";
-  if (days <= 1) return "bg-red-100 border-red-300";
-  if (days < 3) return "bg-orange-100 border-orange-300";
-  return "bg-gray-200 border-gray-300";
+  if (isShipped) return "bg-white border-stone-200 border-l-4 border-l-emerald-500";
+  if (days < 0) return "bg-white border-stone-200 border-l-4 border-l-red-600";
+  if (days <= 1) return "bg-white border-stone-200 border-l-4 border-l-orange-500";
+  if (days < 3) return "bg-white border-stone-200 border-l-4 border-l-amber-500";
+  return "bg-white border-stone-200 border-l-4 border-l-stone-300";
 }
 
 function getDeadlineBadgeClass(days: number, isShipped: boolean) {
-  if (isShipped) return "bg-green-200 text-green-800";
-  if (days < 0) return "bg-red-700 text-white";
-  if (days <= 1) return "bg-red-500 text-white";
-  if (days < 3) return "bg-orange-500 text-white";
-  return "bg-gray-200 text-gray-700";
+  if (isShipped) return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+  if (days < 0) return "bg-red-50 text-red-700 border border-red-200 font-semibold";
+  if (days <= 1) return "bg-orange-50 text-orange-700 border border-orange-200 font-semibold";
+  if (days < 3) return "bg-amber-50 text-amber-700 border border-amber-200";
+  return "bg-stone-100 text-stone-600 border border-stone-200";
 }
 
 export default function OrdersPage() {
@@ -130,6 +125,7 @@ function OrdersInner() {
   });
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [editCustomerTarget, setEditCustomerTarget] = useState<Order | null>(null);
 
   useEffect(() => {
     api
@@ -226,7 +222,7 @@ function OrdersInner() {
             placeholder="Cari customer / no. order..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-11 md:h-10 w-full rounded-xl border border-gray-300 bg-white pl-9 pr-9 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 shadow-xs"
+            className="h-11 md:h-10 w-full rounded-lg border border-stone-300 bg-white pl-9 pr-9 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-xs"
           />
           {search && (
             <button
@@ -254,7 +250,7 @@ function OrdersInner() {
                   | "date_asc"
               )
             }
-            className="h-11 md:h-10 appearance-none rounded-xl border border-gray-300 bg-white pl-8 pr-7 text-base md:text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 shadow-xs"
+            className="h-11 md:h-10 appearance-none rounded-lg border border-stone-300 bg-white pl-8 pr-7 text-base md:text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-xs"
           >
             <option value="deadline_asc">Deadline ↑</option>
             <option value="deadline_desc">Deadline ↓</option>
@@ -356,7 +352,7 @@ function OrdersInner() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                         <p className="text-[13px] font-bold text-foreground">
-                          {order.orderNumber}
+                          {order.customerName}
                         </p>
                         <Badge
                           variant="secondary"
@@ -366,7 +362,7 @@ function OrdersInner() {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
-                        {order.customerName}
+                        {order.orderNumber}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -375,10 +371,24 @@ function OrdersInner() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          setEditCustomerTarget(order);
+                        }}
+                        aria-label={`Edit ${order.customerName}`}
+                        title="Edit nama customer"
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-stone-100 hover:text-foreground transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setDeleteTarget(order);
                         }}
                         aria-label={`Hapus ${order.orderNumber}`}
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Hapus order"
+                        className="rounded-lg p-1.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors border border-red-200 hover:border-red-600"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -435,7 +445,7 @@ function OrdersInner() {
         })}
 
         {filteredOrders.length === 0 && (
-          <Card className="bg-white border-gray-300 card-shadow-lg">
+          <Card className="bg-white border-stone-300 card-shadow-lg">
             <CardContent className="py-8 text-center">
               <ShoppingCart className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-base text-muted-foreground">
@@ -453,6 +463,15 @@ function OrdersInner() {
       <CreateOrderDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
+        onOrderCreated={async () => {
+          // Refresh order list setelah order baru dibuat
+          try {
+            const fresh = await api.get<Order[]>("/api/orders");
+            setOrderList(fresh);
+          } catch (err) {
+            console.error("Failed to refresh orders:", err);
+          }
+        }}
       />
 
       {/* Dialog konfirmasi hapus order */}
@@ -504,6 +523,30 @@ function OrdersInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Edit Customer */}
+      {editCustomerTarget && (
+        <EditCustomerDialog
+          open={!!editCustomerTarget}
+          onOpenChange={(open) => !open && setEditCustomerTarget(null)}
+          orderId={editCustomerTarget.id}
+          initialCustomerName={editCustomerTarget.customerName}
+          initialCustomerContact={editCustomerTarget.customerContact}
+          onSuccess={(updated) => {
+            setOrderList((prev) =>
+              prev.map((o) =>
+                o.id === editCustomerTarget.id
+                  ? {
+                      ...o,
+                      customerName: updated.customerName,
+                      customerContact: updated.customerContact ?? null,
+                    }
+                  : o
+              )
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

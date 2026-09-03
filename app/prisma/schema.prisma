@@ -7,6 +7,9 @@
 // v2 — Tambah FabricColor antara Fabric dan FabricBatch (ADR-0001)
 //      BomItem.fabricColorId (sebelumnya fabricId)
 //      FIFO beroperasi per FabricColor
+// v3 — Tambah BomItem.batchId untuk manual batch selection (ADR-0004)
+//      User pilih batch spesifik saat tambah BOM, harga dari batch tersebut
+//      Backward compatible: batchId nullable, null = pakai averaging (old data)
 // ============================================================
 
 generator client {
@@ -88,6 +91,7 @@ model FabricBatch {
 
   fabricColor FabricColor @relation(fields: [fabricColorId], references: [id], onDelete: Cascade)
   usages      BatchUsage[]
+  bomItems    BomItem[]
 
   @@index([fabricColorId])
   @@map("fabric_batches")
@@ -120,24 +124,28 @@ model Order {
 
 // === 5. BOM — KOMPOSISI BAHAN PER ORDER (per FabricColor) ===
 model BomItem {
-  id            String @id @default(cuid())
-  orderId       String @map("order_id")
-  fabricColorId String @map("fabric_color_id") // FK ke FabricColor (ADR-0001)
-  fabricId      String @map("fabric_id")        // denormalized untuk display name
-  qtyRequired   Float  @map("qty_required")
-  wastePct      Float  @default(0) @map("waste_pct")
-  qtyActual     Float  @map("qty_actual")       // = qty_required * (1 + waste_pct/100)
-  pricePerKg    Float  @map("price_per_kg")     // snapshot harga saat BOM dibuat
-  materialCost  Float  @map("material_cost")    // = qty_actual * price_per_kg
+  id            String  @id @default(cuid())
+  orderId       String  @map("order_id")
+  fabricColorId String  @map("fabric_color_id") // FK ke FabricColor (ADR-0001)
+  fabricId      String  @map("fabric_id")        // denormalized untuk display name
+  batchId       String? @map("batch_id")        // FK ke FabricBatch (ADR-0004) - nullable untuk backward compat
+  qtyRequired   Float   @map("qty_required")
+  wastePct      Float   @default(0) @map("waste_pct")
+  qtyActual     Float   @map("qty_actual")       // = qty_required * (1 + waste_pct/100)
+  pricePerKg    Float   @map("price_per_kg")     // snapshot harga dari batch atau averaging
+  materialCost  Float   @map("material_cost")    // = qty_actual * price_per_kg
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  fabricColor FabricColor @relation(fields: [fabricColorId], references: [id])
-  fabric      Fabric      @relation(fields: [fabricId], references: [id])
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fabricColor FabricColor   @relation(fields: [fabricColorId], references: [id])
+  fabric      Fabric        @relation(fields: [fabricId], references: [id])
+  batch       FabricBatch?  @relation(fields: [batchId], references: [id])
 
-  @@unique([orderId, fabricColorId]) // 1 warna hanya 1x per order
+  @@unique([orderId, batchId]) // 1 batch hanya 1x per order, multi-batch per warna diperbolehkan
   @@index([orderId])
+  @@index([fabricColorId])
   @@index([fabricId])
+  @@index([batchId])
   @@map("bom_items")
 }
 

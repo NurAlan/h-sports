@@ -80,16 +80,16 @@ export default function SettingsPage() {
         subtitle="Informasi pemilik & identitas usaha tersimpan di database"
       />
 
-      <Card className="border-gray-300 bg-white card-shadow-lg">
+      <Card className="border-stone-300 bg-white card-shadow-lg">
         <CardContent className="pt-6">
           {loading ? (
             <div className="space-y-4 py-6">
-              <div className="h-4 w-1/3 bg-gray-200 rounded-md animate-pulse" />
-              <div className="h-11 w-full bg-gray-100 rounded-lg animate-pulse" />
-              <div className="h-4 w-1/4 bg-gray-200 rounded-md animate-pulse" />
-              <div className="h-11 w-full bg-gray-100 rounded-lg animate-pulse" />
-              <div className="h-4 w-1/4 bg-gray-200 rounded-md animate-pulse" />
-              <div className="h-11 w-full bg-gray-100 rounded-lg animate-pulse" />
+              <div className="h-4 w-1/3 bg-stone-200 rounded-md animate-pulse" />
+              <div className="h-11 w-full bg-stone-100 rounded-lg animate-pulse" />
+              <div className="h-4 w-1/4 bg-stone-200 rounded-md animate-pulse" />
+              <div className="h-11 w-full bg-stone-100 rounded-lg animate-pulse" />
+              <div className="h-4 w-1/4 bg-stone-200 rounded-md animate-pulse" />
+              <div className="h-11 w-full bg-stone-100 rounded-lg animate-pulse" />
             </div>
           ) : (
             <form onSubmit={handleSave} className="space-y-4">
@@ -129,7 +129,7 @@ export default function SettingsPage() {
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     Email Akun
                   </Label>
-                  <span className="text-[11px] text-muted-foreground bg-gray-100 px-2 py-0.5 rounded">
+                  <span className="text-[11px] text-muted-foreground bg-stone-100 px-2 py-0.5 rounded">
                     Terhubung ke Akun
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
                   type="email"
                   value={email}
                   disabled
-                  className="h-11 text-base bg-gray-100 text-gray-700 opacity-90 cursor-not-allowed"
+                  className="h-11 text-base bg-stone-100 text-stone-600 opacity-90 cursor-not-allowed"
                 />
               </div>
 
@@ -157,12 +157,12 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 border border-stone-200 text-xs">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <ShieldCheck className="h-4 w-4 text-green-600" />
                   <span>Peran Akses:</span>
                 </div>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300 font-semibold capitalize">
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300 font-semibold capitalize">
                   {role}
                 </Badge>
               </div>
@@ -190,7 +190,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Kartu Reset Preferensi Panduan */}
-      <Card className="border-gray-300 bg-white card-shadow-lg mt-4">
+      <Card className="border-stone-300 bg-white card-shadow-lg mt-4">
         <CardContent className="py-4 px-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -207,7 +207,7 @@ export default function SettingsPage() {
               variant="outline"
               size="sm"
               onClick={handleResetTour}
-              className="shrink-0 min-h-[40px] px-3 border-gray-300 hover:bg-blue-50 hover:text-primary text-xs font-semibold active:scale-95 transition-all"
+              className="shrink-0 min-h-[40px] px-3 border-stone-300 hover:bg-blue-50 hover:text-primary text-xs font-semibold active:scale-95 transition-all"
             >
               Reset Panduan
             </Button>

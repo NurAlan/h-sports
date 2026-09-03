@@ -15,9 +15,14 @@ import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { FABRIC_CATALOG } from "@/lib/master-data";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/toast/toast-provider";
+
+interface FabricOption {
+  id: string;
+  name: string;
+  unit: string;
+}
 
 interface AddFabricPurchaseDialogProps {
   open: boolean;
@@ -53,9 +58,26 @@ export function AddFabricPurchaseDialog({
     initialPricePerKg ? String(initialPricePerKg) : ""
   );
 
+  // Fetch fabric list from database
+  const [fabricOptions, setFabricOptions] = useState<FabricOption[]>([]);
+  const [fabricsLoading, setFabricsLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFabricsLoading(true);
+      api
+        .get<FabricOption[]>("/api/fabrics")
+        .then((data) => setFabricOptions(data))
+        .catch(() => setFabricOptions([]))
+        .finally(() => setFabricsLoading(false));
+    }
+  }, [open]);
+
   // Auto-fill saat dialog dibuka
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (initialFabricId) setFabricId(initialFabricId);
       if (initialColorName) setColorName(initialColorName);
       if (initialPricePerKg) setPricePerKg(String(initialPricePerKg));
@@ -64,7 +86,7 @@ export function AddFabricPurchaseDialog({
     }
   }, [open, initialFabricId, initialColorName, initialPricePerKg, initialSupplierName]);
 
-  const selectedFabric = FABRIC_CATALOG.find((f) => f.id === fabricId);
+  const selectedFabric = fabricOptions.find((f) => f.id === fabricId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,11 +133,11 @@ export function AddFabricPurchaseDialog({
           <DialogBody>
           <div className="grid gap-4">
 
-            {/* Fabric Selection */}
+            {/* Fabric Selection — from database */}
             <div className="grid gap-2">
               <Label htmlFor="fabric">Jenis Kain *</Label>
               {initialFabricId && selectedFabric ? (
-                <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
+                <div className="flex items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-3 py-2">
                   <span className="text-base font-medium text-foreground">
                     {selectedFabric.name}
                   </span>
@@ -125,10 +147,10 @@ export function AddFabricPurchaseDialog({
                 </div>
               ) : (
                 <SearchableSelect
-                  items={FABRIC_CATALOG}
+                  items={fabricOptions}
                   value={fabricId}
                   onValueChange={(val) => setFabricId(val)}
-                  placeholder="Cari kain..."
+                  placeholder={fabricsLoading ? "Memuat kain..." : "Cari kain..."}
                   getItemValue={(f) => f.id}
                   getItemLabel={(f) => f.name}
                 />
@@ -139,7 +161,7 @@ export function AddFabricPurchaseDialog({
             <div className="grid gap-2">
               <Label htmlFor="color">Warna *</Label>
               {initialColorName ? (
-                <div className="flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
+                <div className="flex items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-3 py-2">
                   <span className="text-base font-medium text-foreground">
                     {initialColorName}
                   </span>

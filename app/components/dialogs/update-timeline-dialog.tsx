@@ -55,19 +55,19 @@ const STATUS_OPTIONS = [
     value: "not_started",
     label: "Belum Dimulai",
     icon: Circle,
-    badgeClass: "bg-gray-100 text-gray-800 border-gray-300",
+    badgeClass: "bg-slate-100 text-slate-700 border-slate-300 font-medium",
   },
   {
     value: "in_progress",
     label: "Sedang Dikerjakan",
     icon: Clock,
-    badgeClass: "bg-blue-100 text-blue-800 border-blue-300 font-semibold",
+    badgeClass: "bg-blue-50 text-blue-700 border-blue-300 font-semibold ring-1 ring-blue-500/20",
   },
   {
     value: "completed",
     label: "Selesai",
     icon: CheckCircle2,
-    badgeClass: "bg-green-100 text-green-800 border-green-300 font-semibold",
+    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold ring-1 ring-emerald-500/20",
   },
 ];
 
@@ -118,6 +118,7 @@ export function UpdateTimelineDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormState(getInitialState());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,7 +194,7 @@ export function UpdateTimelineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Update Timeline Produksi</DialogTitle>
           <DialogDescription>
@@ -202,7 +203,7 @@ export function UpdateTimelineDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <DialogBody>
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {STAGES.map((stage, index) => {
                 const state = formState[stage.id] || {
                   status: "not_started",
@@ -218,15 +219,29 @@ export function UpdateTimelineDialog({
                 return (
                   <div
                     key={stage.id}
-                    className="rounded-xl border border-gray-200 bg-gray-50/70 p-3.5 space-y-3 transition-colors shadow-xs"
+                    className={`rounded-xl border p-4 space-y-3 transition-all duration-200 shadow-xs ${
+                      isCompleted
+                        ? "bg-emerald-50/25 border-emerald-200"
+                        : isStarted
+                          ? "bg-blue-50/25 border-blue-200 ring-1 ring-blue-500/10"
+                          : "bg-white border-slate-200 hover:border-slate-300"
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                            isCompleted
+                              ? "bg-emerald-600 text-white"
+                              : isStarted
+                                ? "bg-blue-600 text-white"
+                                : "bg-slate-800 text-white"
+                          }`}
+                        >
                           {index + 1}
                         </span>
                         <div className="min-w-0">
-                          <Label htmlFor={`status-${stage.id}`} className="font-semibold text-foreground text-sm block truncate">
+                          <Label htmlFor={`status-${stage.id}`} className="font-bold text-foreground text-sm block truncate cursor-pointer">
                             {stage.name}
                           </Label>
                           <span className="text-[11px] text-muted-foreground block truncate">
@@ -236,28 +251,48 @@ export function UpdateTimelineDialog({
                       </div>
                       <Badge
                         variant="secondary"
-                        className={`shrink-0 text-xs border flex items-center gap-1 ${statusConfig.badgeClass}`}
+                        className={`shrink-0 text-xs border flex items-center gap-1.5 px-2.5 py-1 ${statusConfig.badgeClass}`}
                       >
-                        <Icon className="h-3 w-3" />
+                        <Icon className="h-3.5 w-3.5" />
                         {statusConfig.label}
                       </Badge>
                     </div>
 
-                    {/* Status selector */}
+                    {/* Status selector with strong affordance */}
                     <div>
+                      <Label className="text-[11px] font-semibold text-slate-600 mb-1.5 block">
+                        Pilih Status Tahapan
+                      </Label>
                       <Select
                         value={state.status}
                         onValueChange={(val) => handleStatusChange(stage.id, val || "not_started")}
                         disabled={loading}
                       >
-                        <SelectTrigger id={`status-${stage.id}`} className="bg-white">
+                        <SelectTrigger
+                          id={`status-${stage.id}`}
+                          className={`h-11 border bg-white px-3.5 shadow-xs font-semibold text-sm transition-all ${
+                            isCompleted
+                              ? "border-emerald-300 text-emerald-800 focus-visible:border-emerald-600 focus-visible:ring-emerald-500/20"
+                              : isStarted
+                                ? "border-blue-300 text-blue-800 focus-visible:border-blue-600 focus-visible:ring-blue-500/20"
+                                : "border-slate-300 text-slate-800 hover:border-slate-400 focus-visible:border-blue-600 focus-visible:ring-blue-500/20"
+                          }`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
-                              <div className="flex items-center gap-2">
-                                <opt.icon className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex items-center gap-2 font-medium">
+                                <opt.icon
+                                  className={`h-4 w-4 ${
+                                    opt.value === "completed"
+                                      ? "text-emerald-600"
+                                      : opt.value === "in_progress"
+                                        ? "text-blue-600"
+                                        : "text-slate-500"
+                                  }`}
+                                />
                                 <span>{opt.label}</span>
                               </div>
                             </SelectItem>
@@ -266,25 +301,25 @@ export function UpdateTimelineDialog({
                       </Select>
                     </div>
 
-                    {/* Tanggal Riwayat: Mulai & Selesai (tampil saat in_progress atau completed) */}
+                    {/* Tanggal Riwayat: Mulai & Selesai */}
                     {isStarted && (
-                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-200/80">
+                      <div className="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-200/80">
                         <div>
-                          <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                          <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1 mb-1">
                             <Calendar className="h-3 w-3 text-blue-600" />
-                            Tgl Mulai
+                            Tgl Mulai *
                           </label>
                           <input
                             type="date"
                             value={state.actualStart}
                             onChange={(e) => handleDateChange(stage.id, "actualStart", e.target.value)}
-                            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 shadow-xs"
+                            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none hover:border-slate-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500/20 shadow-xs"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                            <Calendar className="h-3 w-3 text-green-600" />
-                            Tgl Selesai
+                          <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1 mb-1">
+                            <Calendar className="h-3 w-3 text-emerald-600" />
+                            Tgl Selesai {isCompleted && "*"}
                           </label>
                           <input
                             type="date"
@@ -292,8 +327,8 @@ export function UpdateTimelineDialog({
                             disabled={!isCompleted}
                             onChange={(e) => handleDateChange(stage.id, "actualEnd", e.target.value)}
                             placeholder={!isCompleted ? "Menunggu selesai..." : undefined}
-                            className={`h-10 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 shadow-xs ${
-                              !isCompleted ? "opacity-50 cursor-not-allowed bg-gray-100" : ""
+                            className={`h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none hover:border-slate-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500/20 shadow-xs ${
+                              !isCompleted ? "opacity-50 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200" : ""
                             }`}
                           />
                         </div>
@@ -313,7 +348,11 @@ export function UpdateTimelineDialog({
             >
               Batal
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="min-h-[42px] px-5 bg-blue-600 text-white font-bold hover:bg-blue-700 active:scale-95 shadow-sm transition-all"
+            >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

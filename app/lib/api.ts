@@ -156,7 +156,37 @@ export interface DashboardData {
     overdue: number;
     upcomingDeadline: number;
   };
+  financial: {
+    revenue: number;
+    hpp: number;
+    profit: number;
+    margin: number;
+    orderCount: number;
+  };
   lowStock: { id: string; name: string; stock: number; reorderPoint: number }[];
+  needAttention: {
+    id: string;
+    orderNumber: string;
+    customerName: string;
+    status: "draft" | "in_production" | "qc" | "shipped";
+    deadline: string | null;
+    daysToDeadline: number | null;
+    severity: "overdue" | "urgent" | "warning";
+    issue: string;
+    currentStage: string | null;
+    stagesCompleted: number;
+    stagesTotal: number;
+  }[];
+  productionProgress: {
+    id: string;
+    orderNumber: string;
+    customerName: string;
+    status: "draft" | "in_production" | "qc" | "shipped";
+    currentStage: string | null;
+    progressPct: number;
+    stagesCompleted: number;
+    stagesTotal: number;
+  }[];
 }
 
 export interface ReportsData {

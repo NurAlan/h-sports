@@ -175,10 +175,10 @@ export function ProductionReportView({
   return (
     <div className="space-y-4">
       {/* Kain terbanyak dipakai */}
-      <Card className="card-shadow-lg bg-white border-gray-300">
+      <Card className="card-shadow-lg bg-white border-stone-300">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Layers className="h-4 w-4 text-violet-500" />
+            <Layers className="h-4 w-4 text-teal-600" />
             Kain Terbanyak Dipakai
           </CardTitle>
         </CardHeader>
@@ -193,14 +193,14 @@ export function ProductionReportView({
                 <span
                   className={cn(
                     "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
-                    i === 0 ? "bg-violet-100 text-violet-700" : "bg-gray-100 text-muted-foreground"
+                    i === 0 ? "bg-teal-100 text-teal-700" : "bg-stone-100 text-muted-foreground"
                   )}
                 >
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-medium text-foreground truncate">{f.name}</p>
-                  <div className="h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden">
+                  <div className="h-1.5 rounded bg-stone-100 mt-1 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-violet-500"
                       style={{ width: `${maxKg ? (f.kg / maxKg) * 100 : 0}%` }}
@@ -217,7 +217,7 @@ export function ProductionReportView({
       </Card>
 
       {/* Riwayat Order */}
-      <Card className="card-shadow-lg bg-white border-gray-300">
+      <Card className="card-shadow-lg bg-white border-stone-300">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -249,7 +249,7 @@ export function ProductionReportView({
                     {/* Collapsed card — mirrors keuangan layout */}
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : o.id)}
-                      className="w-full flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-100"
+                      className="w-full flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-left transition-colors hover:bg-stone-100"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
@@ -318,7 +318,7 @@ export function ProductionReportView({
                               ))}
                             </>
                           )}
-                          <div className="flex justify-between col-span-2 sm:col-span-3 border-t border-gray-200 pt-2 mt-1">
+                          <div className="flex justify-between col-span-2 sm:col-span-3 border-t border-stone-200 pt-2 mt-1">
                             <span className="font-semibold">HPP (Total)</span>
                             <span className="font-bold">{formatRupiah(o.hpp)}</span>
                           </div>
@@ -379,7 +379,7 @@ export function ProductionReportView({
 
           {/* Load More */}
           {hasMore && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="mt-3 pt-3 border-t border-stone-100">
               <Button
                 variant="outline"
                 className="w-full text-sm text-muted-foreground"
@@ -391,9 +391,9 @@ export function ProductionReportView({
           )}
 
           {/* Export */}
-          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+          <div className="flex gap-2 mt-3 pt-3 border-t border-stone-100">
             <Button variant="outline" className="flex-1 gap-1.5" onClick={handleExportCSV}>
-              <FileSpreadsheet className="h-4 w-4 text-green-600" />
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
               Export Excel
             </Button>
           </div>

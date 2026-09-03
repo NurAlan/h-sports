@@ -73,7 +73,7 @@ export function DateRangeFilter({
         className={cn(
           "flex items-center gap-2 w-full rounded-lg border bg-white text-left transition-colors",
           compact ? "h-9 px-3 text-sm" : "h-10 px-3 text-base",
-          hasValue ? "border-primary text-foreground" : "border-gray-300 text-muted-foreground"
+          hasValue ? "border-primary text-foreground" : "border-stone-300 text-muted-foreground"
         )}
       >
         <Calendar className={cn("h-4 w-4 shrink-0", hasValue ? "text-primary" : "text-muted-foreground")} />
@@ -98,7 +98,7 @@ export function DateRangeFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 z-50 mt-1.5 rounded-xl border border-gray-200 bg-white p-3 shadow-lg card-shadow-lg">
+          <div className="absolute left-0 right-0 z-50 mt-1.5 rounded-lg border border-stone-200 bg-white p-3 shadow-lg card-shadow-lg">
             {presets && presets.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {presets.map((p) => {
@@ -112,7 +112,7 @@ export function DateRangeFilter({
                         "rounded-full px-3 py-1.5 text-sm font-medium border transition-colors",
                         active
                           ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50"
+                          : "bg-white text-muted-foreground border-stone-300 hover:bg-stone-50"
                       )}
                     >
                       {p.label}
@@ -131,7 +131,7 @@ export function DateRangeFilter({
                   max={endDate || undefined}
                   onChange={(e) => onStartChange(e.target.value)}
                   className={cn(
-                    "w-full rounded-lg border border-gray-300 bg-white px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                    "w-full rounded-lg border border-stone-300 bg-white px-2.5 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
                     compact ? "h-8 text-sm" : "h-9 text-base"
                   )}
                 />
@@ -147,7 +147,7 @@ export function DateRangeFilter({
                   min={startDate || undefined}
                   onChange={(e) => onEndChange(e.target.value)}
                   className={cn(
-                    "w-full rounded-lg border border-gray-300 bg-white px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                    "w-full rounded-lg border border-stone-300 bg-white px-2.5 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
                     compact ? "h-8 text-sm" : "h-9 text-base"
                   )}
                 />

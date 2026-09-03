@@ -10,12 +10,14 @@ import {
   Percent,
   Receipt,
   FileSpreadsheet,
+  RefreshCw,
 } from "lucide-react";
-import { type Order, type MonthlySummary } from "@/lib/api";
+import { type Order, type MonthlySummary, api } from "@/lib/api";
 import { formatRupiah, formatDate, cn } from "@/lib/utils";
 import { ORDER_STATUS } from "@/lib/status-config";
 import { Sparkline } from "@/components/reports/sparkline";
 import { ProfitTrendChart } from "@/components/reports/profit-trend-chart";
+import { useToast } from "@/components/toast/toast-provider";
 
 const PAGE_SIZE = 10;
 
@@ -38,6 +40,33 @@ export function KeuanganView({
   statusFilter?: string;
 }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [generating, setGenerating] = useState(false);
+  const toast = useToast();
+
+  const handleGenerateSummary = async () => {
+    setGenerating(true);
+    try {
+      const result = await api.post<{
+        success: boolean;
+        message: string;
+        stats: {
+          monthsProcessed: number;
+          ordersProcessed: number;
+        };
+      }>("/api/reports/generate-summary", {});
+      
+      toast.success(
+        `Summary berhasil dibuat! ${result.stats.monthsProcessed} bulan dari ${result.stats.ordersProcessed} order.`
+      );
+      
+      // Refresh page untuk reload summaries
+      window.location.reload();
+    } catch (err) {
+      toast.error(`Gagal generate summary: ${(err as Error).message}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const currOrders = useMemo(
     () =>
@@ -117,10 +146,10 @@ export function KeuanganView({
   };
 
   const kpis = [
-    { icon: DollarSign, label: "Omzet", value: summary.revenue, prev: prevSummary.revenue, color: "border-blue-200 bg-blue-100", iconColor: "text-blue-700", valueColor: "text-blue-700", spark: spark.revenue, sparkColor: "#2563eb" },
-    { icon: Wallet, label: "HPP", value: summary.hpp, prev: prevSummary.hpp, color: "border-orange-200 bg-orange-100", iconColor: "text-orange-700", valueColor: "text-orange-700", spark: spark.hpp, sparkColor: "#f59e0b" },
-    { icon: TrendingUp, label: "Profit", value: summary.profit, prev: prevSummary.profit, color: "border-green-200 bg-green-100", iconColor: "text-green-700", valueColor: "text-green-700", spark: spark.profit, sparkColor: "#16a34a" },
-    { icon: Percent, label: "Margin", value: summary.margin, prev: prevSummary.margin, isPercent: true, color: "border-violet-200 bg-violet-100", iconColor: "text-violet-700", valueColor: "text-violet-700", spark: spark.margin, sparkColor: "#7c3aed" },
+    { icon: DollarSign, label: "Omzet", value: summary.revenue, prev: prevSummary.revenue, color: "border-teal-200 bg-teal-50", iconColor: "text-teal-700", valueColor: "text-teal-700", spark: spark.revenue, sparkColor: "#0F766E" },
+    { icon: Wallet, label: "HPP", value: summary.hpp, prev: prevSummary.hpp, color: "border-stone-200 bg-stone-100", iconColor: "text-stone-600", valueColor: "text-stone-700", spark: spark.hpp, sparkColor: "#78716C" },
+    { icon: TrendingUp, label: "Profit", value: summary.profit, prev: prevSummary.profit, color: "border-emerald-200 bg-emerald-50", iconColor: "text-emerald-700", valueColor: "text-emerald-700", spark: spark.profit, sparkColor: "#059669" },
+    { icon: Percent, label: "Margin", value: summary.margin, prev: prevSummary.margin, isPercent: true, color: "border-amber-200 bg-amber-50", iconColor: "text-amber-700", valueColor: "text-amber-700", spark: spark.margin, sparkColor: "#D97706" },
   ];
 
   return (
@@ -153,9 +182,23 @@ export function KeuanganView({
       </div>
 
       {/* Tren Profit & Margin */}
-      <Card className="card-shadow-lg bg-white border-gray-300">
+      <Card className="card-shadow-lg bg-white border-stone-300">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Tren Profit & Margin (6 bulan)</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Tren Profit & Margin (6 bulan)</CardTitle>
+            {summaries.length === 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateSummary}
+                disabled={generating}
+                className="gap-1.5"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", generating && "animate-spin")} />
+                {generating ? "Generating..." : "Generate"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <ProfitTrendChart data={summaries} />
@@ -163,7 +206,7 @@ export function KeuanganView({
       </Card>
 
       {/* Riwayat Pendapatan */}
-      <Card className="card-shadow-lg bg-white border-gray-300">
+      <Card className="card-shadow-lg bg-white border-stone-300">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <Receipt className="h-4 w-4 text-primary" />
@@ -187,7 +230,7 @@ export function KeuanganView({
                 return (
                   <div
                     key={order.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -222,7 +265,7 @@ export function KeuanganView({
 
           {/* Load More */}
           {hasMore && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="mt-3 pt-3 border-t border-stone-100">
               <Button
                 variant="outline"
                 className="w-full text-sm text-muted-foreground"
@@ -234,7 +277,7 @@ export function KeuanganView({
           )}
 
           {/* Export */}
-          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+          <div className="flex gap-2 mt-3 pt-3 border-t border-stone-100">
             <Button variant="outline" className="flex-1 gap-1.5" onClick={handleExportCSV}>
               <FileSpreadsheet className="h-4 w-4 text-green-600" /> Export Excel
             </Button>

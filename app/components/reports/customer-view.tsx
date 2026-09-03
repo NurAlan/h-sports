@@ -39,7 +39,7 @@ export function CustomerView({ orders, range, statusFilter = "all" }: { orders: 
   const maxProfit = customers.reduce((m, c) => Math.max(m, c.profit), 0);
 
   return (
-    <Card className="card-shadow-lg bg-white border-gray-300">
+    <Card className="card-shadow-lg bg-white border-stone-300">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Trophy className="h-4 w-4 text-amber-500" />
@@ -59,8 +59,8 @@ export function CustomerView({ orders, range, statusFilter = "all" }: { orders: 
             <div key={c.name} className="flex items-center gap-3">
               <span
                 className={cn(
-                  "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
-                  i === 0 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-muted-foreground"
+                  "h-6 w-6 rounded flex items-center justify-center text-[11px] font-bold shrink-0",
+                  i === 0 ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-muted-foreground"
                 )}
               >
                 {i + 1}
@@ -73,9 +73,9 @@ export function CustomerView({ orders, range, statusFilter = "all" }: { orders: 
                   </p>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="h-1.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-1.5 flex-1 rounded bg-stone-100 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-primary"
+                      className="h-full rounded bg-primary"
                       style={{ width: `${maxProfit ? (c.profit / maxProfit) * 100 : 0}%` }}
                     />
                   </div>

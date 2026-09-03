@@ -1,0 +1,3 @@
+# 0003 — Biaya Lain (OrderCostItem) sebagai tabel relasional
+
+Menambahkan biaya produksi di luar material kain dan upah (sablon, resleting, aksesoris) sebagai tabel relasional `OrderCostItem` terpisah, bukan kolom JSON di `OrderCosting`. Total biaya lain di-bake ke `OrderCosting.otherCostTotal` dan dimasukkan ke HPP (`hpp = material + upah + otherCostTotal`), sehingga markup berlaku atas biaya lain. Ongkos kirim tetap kolom `shippingCost` terpisah dan dibebankan di atas harga jual (`profit = sellingPrice - hpp - shippingCost`). Pola simpan hapus-semua+buat-ulang (seperti ProductionTimeline).

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
+import { syncOrderCosting } from "@/lib/costing-sync";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -21,14 +22,32 @@ export async function GET(_request: Request, { params }: Params) {
           fabric: { select: { name: true } },
         },
       },
+      batch: {
+        select: {
+          id: true,
+          purchaseDate: true,
+          supplierName: true,
+          pricePerKg: true,
+          qtyRemaining: true,
+        },
+      },
     },
+    orderBy: { createdAt: "asc" },
   });
 
-  // Serialize: tambah fabricName + colorName untuk UI
+  // Serialize: tambah fabricName + colorName + batchInfo untuk UI
   const result = items.map((item) => ({
     ...item,
     fabricName: item.fabricColor.fabric.name,
     colorName: item.fabricColor.colorName,
+    batchInfo: item.batch
+      ? {
+          purchaseDate: item.batch.purchaseDate,
+          supplierName: item.batch.supplierName,
+          pricePerKg: item.batch.pricePerKg,
+          qtyRemaining: item.batch.qtyRemaining,
+        }
+      : null,
   }));
 
   return NextResponse.json(result);
@@ -36,8 +55,8 @@ export async function GET(_request: Request, { params }: Params) {
 
 /**
  * POST /api/orders/[id]/bom — tambah bahan ke BOM
- * Body: { fabricId, fabricColorId, qtyRequired, wastePercentage }
- * Harga diambil dari batch FIFO per FabricColor (harga rata-rata stok tersedia)
+ * Body: { fabricId, fabricColorId, batchId, qtyRequired }
+ * Harga diambil dari batch yang dipilih user (manual selection, no waste)
  */
 export async function POST(request: Request, { params }: Params) {
   const { error } = await requireUser();
@@ -45,11 +64,19 @@ export async function POST(request: Request, { params }: Params) {
 
   const { id } = await params;
   const body = await request.json();
-  const { fabricId, fabricColorId, qtyRequired, wastePercentage = 0 } = body;
+  const { fabricId, fabricColorId, batchId, qtyRequired } = body;
 
-  if (!fabricId || !fabricColorId || !qtyRequired) {
+  if (!fabricId || !fabricColorId || !batchId || !qtyRequired) {
     return NextResponse.json(
-      { error: "fabricId, fabricColorId, dan jumlah wajib diisi" },
+      { error: "fabricId, fabricColorId, batchId, dan jumlah wajib diisi" },
+      { status: 400 }
+    );
+  }
+
+  const qtyRequiredNum = parseFloat(qtyRequired);
+  if (isNaN(qtyRequiredNum) || qtyRequiredNum <= 0) {
+    return NextResponse.json(
+      { error: "Jumlah harus berupa angka lebih dari 0" },
       { status: 400 }
     );
   }
@@ -69,15 +96,17 @@ export async function POST(request: Request, { params }: Params) {
     );
   }
 
-  // Cek duplikat: bahan & warna yang sama cukup diedit, bukan ditambah
-  const existing = await prisma.bomItem.findUnique({
-    where: { orderId_fabricColorId: { orderId: id, fabricColorId } },
-    select: { fabricColor: { select: { colorName: true, fabric: { select: { name: true } } } } },
+  // Cek duplikat: batch yang sama di order yang sama cukup diedit
+  const existing = await prisma.bomItem.findFirst({
+    where: { orderId: id, batchId },
+    select: {
+      fabricColor: { select: { colorName: true, fabric: { select: { name: true } } } },
+    },
   });
   if (existing) {
     return NextResponse.json(
       {
-        error: `Bahan ${existing.fabricColor.fabric.name} — ${existing.fabricColor.colorName} sudah ada di BOM. Gunakan Edit untuk mengubah jumlahnya.`,
+        error: `Batch untuk ${existing.fabricColor.fabric.name} — ${existing.fabricColor.colorName} ini sudah ada di BOM. Gunakan Edit untuk mengubah jumlahnya.`,
       },
       { status: 409 }
     );
@@ -92,43 +121,52 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Warna kain tidak ditemukan" }, { status: 404 });
   }
 
-  const qtyActual = parseFloat(qtyRequired) * (1 + parseFloat(wastePercentage) / 100);
-
-  // Cek stok tersedia per FabricColor
-  const stockResult = await prisma.fabricBatch.aggregate({
-    where: { fabricColorId, qtyRemaining: { gt: 0 } },
-    _sum: { qtyRemaining: true },
+  // Cek batch ada dan valid
+  const batch = await prisma.fabricBatch.findUnique({
+    where: { id: batchId },
+    select: { id: true, pricePerKg: true, qtyRemaining: true, fabricColorId: true, purchaseDate: true, supplierName: true },
   });
-  const stock = (stockResult._sum?.qtyRemaining) ?? 0;
 
-  if (stock < qtyActual) {
+  if (!batch) {
+    return NextResponse.json(
+      { error: "Batch pembelian tidak ditemukan" },
+      { status: 404 }
+    );
+  }
+
+  if (batch.fabricColorId !== fabricColorId) {
+    return NextResponse.json(
+      { error: "Batch tidak sesuai dengan jenis & warna kain yang dipilih" },
+      { status: 400 }
+    );
+  }
+
+  // Validasi stok: hard block jika qty > batch.qtyRemaining
+  if (qtyRequiredNum > batch.qtyRemaining) {
     return NextResponse.json(
       {
-        error: `Stok tidak cukup: ${fabricColor.fabric.name} — ${fabricColor.colorName}: butuh ${qtyActual.toFixed(1)}kg, tersedia ${stock.toFixed(1)}kg`,
+        error: `Stok batch tidak cukup: tersedia ${batch.qtyRemaining.toFixed(1)}kg, dibutuhkan ${qtyRequiredNum.toFixed(1)}kg`,
       },
       { status: 400 }
     );
   }
 
-  // Harga rata-rata FIFO per FabricColor (weighted dari sisa stok)
-  const batches = await prisma.fabricBatch.findMany({
-    where: { fabricColorId, qtyRemaining: { gt: 0 } },
-    select: { qtyRemaining: true, pricePerKg: true },
-  });
-  const totalValue = batches.reduce((s, b) => s + b.qtyRemaining * b.pricePerKg, 0);
-  const totalQty = batches.reduce((s, b) => s + b.qtyRemaining, 0);
-  const avgPrice = totalQty > 0 ? totalValue / totalQty : 0;
+  // Waste dihilangkan: qtyActual = qtyRequiredNum
+  const qtyActual = qtyRequiredNum;
+  const pricePerKg = batch.pricePerKg;
+  const materialCost = qtyActual * pricePerKg;
 
   const item = await prisma.bomItem.create({
     data: {
       orderId: id,
       fabricId,
       fabricColorId,
-      qtyRequired: parseFloat(qtyRequired),
-      wastePct: parseFloat(wastePercentage),
+      batchId,
+      qtyRequired: qtyRequiredNum,
+      wastePct: 0,
       qtyActual,
-      pricePerKg: avgPrice,
-      materialCost: qtyActual * avgPrice,
+      pricePerKg,
+      materialCost,
     },
     include: {
       fabricColor: {
@@ -137,12 +175,32 @@ export async function POST(request: Request, { params }: Params) {
           fabric: { select: { name: true } },
         },
       },
+      batch: {
+        select: {
+          id: true,
+          purchaseDate: true,
+          supplierName: true,
+          pricePerKg: true,
+          qtyRemaining: true,
+        },
+      },
     },
   });
+
+  // Otomatis sinkronisasi costing order jika sudah ada
+  await syncOrderCosting(id);
 
   return NextResponse.json({
     ...item,
     fabricName: item.fabricColor.fabric.name,
     colorName: item.fabricColor.colorName,
+    batchInfo: item.batch
+      ? {
+          purchaseDate: item.batch.purchaseDate,
+          supplierName: item.batch.supplierName,
+          pricePerKg: item.batch.pricePerKg,
+          qtyRemaining: item.batch.qtyRemaining,
+        }
+      : null,
   }, { status: 201 });
 }

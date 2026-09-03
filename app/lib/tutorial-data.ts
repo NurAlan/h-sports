@@ -67,10 +67,10 @@ export const ONBOARDING_JOURNEY: OnboardingSlide[] = [
     icon: "💰",
     headline: "Rancang Komposisi Bahan & Hitung Harga Jual",
     description:
-      "Buka detail pesanan untuk menambahkan komposisi bahan (BOM) dengan waste %, lalu tentukan harga jual dengan kalkulator costing otomatis.",
+      "Buka detail pesanan untuk menambahkan komposisi bahan (BOM), lalu tentukan harga jual dengan kalkulator costing otomatis.",
     keyPoints: [
       "Pilih jenis kain & warna yang dibutuhkan per order",
-      "Kalkulator menghitung HPP (Bahan + Upah Jahit + Biaya Lain-lain)",
+      "Kalkulator menghitung HPP (Bahan + Upah + Biaya Lain-lain)",
       "Pilih metode Markup (%) atau Profit Tetap untuk harga jual akurat",
     ],
     actionLink: "/orders",
@@ -228,12 +228,12 @@ export const TUTORIALS: Record<string, TutorialData> = {
       {
         title: "Komposisi Bahan (BOM)",
         description:
-          "Tambahkan kain & warna yang dibutuhkan. Masukkan persentase toleransi sisa (waste %) untuk menghitung kebutuhan aktual.",
+          "Tambahkan kain & warna yang dibutuhkan. Pilih batch pembelian spesifik untuk setiap material.",
       },
       {
         title: "Kalkulator Costing (HPP & Margin)",
         description:
-          "Hitung otomatis total HPP (Bahan + Upah Jahit + Ongkir + Biaya Lain) dan pilih Markup % atau Target Profit Tetap.",
+          "Hitung otomatis total HPP (Bahan + Upah + Biaya Lain). Profit dihitung: Harga Jual - HPP - Ongkir. Pilih metode: Markup % atau Fixed Profit.",
       },
       {
         title: "Timeline Produksi Vertikal",
@@ -243,6 +243,7 @@ export const TUTORIALS: Record<string, TutorialData> = {
     ],
     tips: [
       "Pastikan bahan BOM sudah diinput sebelum menekan tombol Hitung Harga Jual.",
+      "Pilih batch kain secara manual saat menyusun BOM. Stok akan dipotong dari batch yang kamu pilih.",
       "Data tanggal mulai & selesai pada timeline otomatis tersimpan dan menghitung durasi pengerjaan.",
     ],
   },

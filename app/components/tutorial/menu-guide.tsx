@@ -26,7 +26,7 @@ export function MenuGuide({ menuKey }: { menuKey: string }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Panduan untuk halaman ${tutorial.title}`}
-        className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-gray-700 hover:bg-blue-50 hover:text-primary hover:border-primary/40 active:scale-95 transition-all shadow-xs"
+        className="inline-flex min-h-[38px] items-center gap-1.5 rounded border border-stone-300 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-stone-700 hover:bg-blue-50 hover:text-primary hover:border-primary/40 active:scale-95 transition-all shadow-xs"
       >
         <HelpCircle className="h-4 w-4 text-primary shrink-0" />
         <span>Panduan</span>
@@ -62,7 +62,7 @@ export function MenuGuide({ menuKey }: { menuKey: string }) {
               {tutorial.steps.map((step, i) => (
                 <div
                   key={i}
-                  className="flex gap-2.5 rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3 shadow-2xs hover:border-blue-200 transition-colors"
+                  className="flex gap-2.5 rounded-lg border border-stone-200 bg-white p-2.5 sm:p-3 shadow-2xs hover:border-blue-200 transition-colors"
                 >
                   <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] sm:text-xs font-bold text-white shadow-2xs">
                     {i + 1}
@@ -81,15 +81,15 @@ export function MenuGuide({ menuKey }: { menuKey: string }) {
 
             {/* Tips Section */}
             {tutorial.tips.length > 0 && (
-              <div className="rounded-xl bg-amber-50/90 border border-amber-300/80 p-3.5 text-xs text-amber-900">
-                <p className="flex items-center gap-1.5 font-bold text-amber-950 mb-1.5">
-                  <Lightbulb className="h-4 w-4 text-amber-700 shrink-0" />
+              <div className="rounded-xl bg-blue-50/90 border border-blue-300/80 p-3.5 text-xs text-blue-900">
+                <p className="flex items-center gap-1.5 font-bold text-blue-950 mb-1.5">
+                  <Lightbulb className="h-4 w-4 text-blue-700 shrink-0" />
                   Tips Penting
                 </p>
                 <ul className="space-y-1 pl-1">
                   {tutorial.tips.map((tip, i) => (
                     <li key={i} className="flex items-start gap-1.5 leading-relaxed">
-                      <span className="text-amber-700 font-bold">•</span>
+                      <span className="text-blue-700 font-bold">•</span>
                       <span>{tip}</span>
                     </li>
                   ))}
@@ -105,7 +105,7 @@ export function MenuGuide({ menuKey }: { menuKey: string }) {
                   setOpen(false);
                   setTourOpen(true);
                 }}
-                className="w-full flex items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 hover:border-blue-300 hover:shadow-xs active:scale-98 transition-all text-left"
+                className="w-full flex items-center justify-between gap-2 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-stone-50 border border-blue-200 hover:border-blue-300 hover:shadow-xs active:scale-98 transition-all text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white text-xs">

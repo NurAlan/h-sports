@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
-import { allocateBOMFIFO } from "@/lib/fifo";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -16,7 +15,26 @@ export async function GET(_request: Request, { params }: Params) {
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
-      bomItems: true,
+      bomItems: {
+        include: {
+          fabricColor: {
+            select: {
+              colorName: true,
+              fabric: { select: { name: true } },
+            },
+          },
+          batch: {
+            select: {
+              id: true,
+              purchaseDate: true,
+              supplierName: true,
+              pricePerKg: true,
+              qtyRemaining: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
       timelines: { orderBy: { createdAt: "asc" } },
       costing: true,
     },
@@ -25,7 +43,26 @@ export async function GET(_request: Request, { params }: Params) {
   if (!order) {
     return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
   }
-  return NextResponse.json(order);
+
+  // Serialize bomItems: tambahkan fabricName, colorName, batchInfo untuk UI
+  const serialized = {
+    ...order,
+    bomItems: order.bomItems.map((item) => ({
+      ...item,
+      fabricName: item.fabricColor?.fabric?.name ?? "",
+      colorName: item.fabricColor?.colorName ?? "",
+      batchInfo: item.batch
+        ? {
+            purchaseDate: item.batch.purchaseDate,
+            supplierName: item.batch.supplierName,
+            pricePerKg: item.batch.pricePerKg,
+            qtyRemaining: item.batch.qtyRemaining,
+          }
+        : null,
+    })),
+  };
+
+  return NextResponse.json(serialized);
 }
 
 /**
@@ -39,7 +76,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const { id } = await params;
   const body = await request.json();
-  const { status } = body;
+  const { status, customerName, customerContact } = body;
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -49,11 +86,47 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
   }
 
-  // FIFO deduction saat order masuk produksi (hanya sekali — dari draft)
+  // Manual batch deduction saat order masuk produksi (hanya sekali — dari draft)
+  // Potong stok dari batch yang sudah dipilih user di BOM
   if (status === "in_production" && order.status === "draft") {
     try {
       await prisma.$transaction(async (tx) => {
-        await allocateBOMFIFO(tx, id);
+        // Deduct inventory berdasarkan batch yang dipilih di BOM
+        for (const bomItem of order.bomItems) {
+          if (!bomItem.batchId) {
+            throw new Error(`BOM item untuk order ${order.orderNumber} tidak memiliki batch yang dipilih`);
+          }
+
+          // Kurangi stok batch sesuai qtyActual
+          const batch = await tx.fabricBatch.findUnique({
+            where: { id: bomItem.batchId },
+          });
+
+          if (!batch) {
+            throw new Error(`Batch ${bomItem.batchId} tidak ditemukan`);
+          }
+
+          if (batch.qtyRemaining < bomItem.qtyActual) {
+            throw new Error(
+              `Stok batch tidak cukup. Diperlukan ${bomItem.qtyActual}kg, tersisa ${batch.qtyRemaining}kg`
+            );
+          }
+
+          // Update batch remaining
+          await tx.fabricBatch.update({
+            where: { id: bomItem.batchId },
+            data: { qtyRemaining: { decrement: bomItem.qtyActual } },
+          });
+
+          // Catat BatchUsage untuk audit trail
+          await tx.batchUsage.create({
+            data: {
+              batchId: bomItem.batchId,
+              orderId: id,
+              qtyUsed: bomItem.qtyActual,
+            },
+          });
+        }
 
         // Auto-create 5 stage timeline produksi (semua not_started)
         // Supaya timeline langsung muncul setelah order masuk produksi
@@ -85,9 +158,33 @@ export async function PATCH(request: Request, { params }: Params) {
     }
   }
 
+  const dataToUpdate: {
+    status?: string;
+    customerName?: string;
+    customerContact?: string | null;
+  } = {};
+
+  if (status !== undefined) {
+    dataToUpdate.status = status;
+  }
+
+  if (customerName !== undefined) {
+    if (!customerName.trim()) {
+      return NextResponse.json(
+        { error: "Nama customer tidak boleh kosong" },
+        { status: 400 }
+      );
+    }
+    dataToUpdate.customerName = customerName.trim();
+  }
+
+  if (customerContact !== undefined) {
+    dataToUpdate.customerContact = customerContact?.trim() || null;
+  }
+
   const updated = await prisma.order.update({
     where: { id },
-    data: { status },
+    data: dataToUpdate,
   });
   return NextResponse.json(updated);
 }

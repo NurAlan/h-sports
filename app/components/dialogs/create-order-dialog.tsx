@@ -62,7 +62,6 @@ export function CreateOrderDialog({
       onOpenChange(false);
       onOrderCreated?.(newOrder.orderNumber);
       toast.success(`Order ${newOrder.orderNumber} berhasil dibuat`);
-      window.location.reload();
     } catch (err) {
       toast.error(`Gagal: ${(err as Error).message}`);
     } finally {

@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogBody,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -38,6 +39,7 @@ interface FabricEntry {
 export default function FabricsPage() {
   const toast = useToast();
   const [fabrics, setFabrics] = useState<FabricEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   // Dialog state
@@ -55,7 +57,8 @@ export default function FabricsPage() {
       .then((data) =>
         setFabrics(data.map((f) => ({ id: f.id, name: f.name, unit: f.unit })))
       )
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
@@ -152,13 +155,13 @@ export default function FabricsPage() {
           placeholder="Cari jenis kain..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="h-9 w-full rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
         />
       </div>
 
       {/* List */}
       <div className="flex flex-col gap-2.5">
-        {fabrics.length === 0 && !filtered.length && (
+        {loading && (
           <div className="space-y-2.5">
             <ListItemSkeleton />
             <ListItemSkeleton />
@@ -166,12 +169,26 @@ export default function FabricsPage() {
             <ListItemSkeleton />
           </div>
         )}
+        {!loading && fabrics.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="h-12 w-12 rounded-lg bg-stone-100 flex items-center justify-center mb-3">
+              <Package className="h-6 w-6 text-stone-400" />
+            </div>
+            <p className="text-base font-semibold text-foreground mb-1">Belum ada jenis kain</p>
+            <p className="text-sm text-muted-foreground">Tambah jenis kain dengan tombol Tambah di atas</p>
+          </div>
+        )}
+        {!loading && filtered.length === 0 && search && (
+          <div className="text-center py-8">
+            <p className="text-base text-muted-foreground">Tidak ada kain yang cocok dengan &quot;{search}&quot;</p>
+          </div>
+        )}
         {filtered.map((fabric) => {
           return (
-            <Card key={fabric.id} className="border-gray-300 bg-white card-shadow">
+            <Card key={fabric.id} className="border-stone-200 bg-white card-shadow">
               <CardContent className="py-3 px-4">
                 <div className="flex items-center gap-3">
-                  <div className="bg-gray-100 p-2 rounded-lg shrink-0">
+                  <div className="bg-stone-100 p-2 rounded-lg shrink-0">
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -187,7 +204,7 @@ export default function FabricsPage() {
                       type="button"
                       onClick={() => openEdit(fabric)}
                       aria-label={`Edit ${fabric.name}`}
-                      className="rounded-lg p-2 text-muted-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-blue-50 hover:text-primary transition-colors"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -207,13 +224,13 @@ export default function FabricsPage() {
         })}
 
         {filtered.length === 0 && (
-          <Card className="bg-white border-gray-300 card-shadow-lg">
+          <Card className="bg-white border-stone-300 card-shadow-lg">
             <CardContent className="py-10 text-center">
               <p className="text-base font-medium text-foreground mb-1">
                 Kain tidak ditemukan
               </p>
               <p className="text-sm text-muted-foreground">
-                Tidak ada hasil untuk "{search}"
+                Tidak ada hasil untuk &quot;{search}&quot;
               </p>
             </CardContent>
           </Card>
@@ -233,27 +250,29 @@ export default function FabricsPage() {
                 : "Tambahkan jenis kain baru ke master data"}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSave}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="fabric-name">Nama Kain *</Label>
-                <Input
-                  id="fabric-name"
-                  placeholder="Contoh: Cotton Carded 32s"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
+          <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <DialogBody>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="fabric-name">Nama Kain *</Label>
+                  <Input
+                    id="fabric-name"
+                    placeholder="Contoh: Cotton Carded 32s"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="fabric-unit">Satuan</Label>
+                  <Input
+                    id="fabric-unit"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="fabric-unit">Satuan</Label>
-                <Input
-                  id="fabric-unit"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                />
-              </div>
-            </div>
+            </DialogBody>
             <DialogFooter>
               <Button
                 type="button"
@@ -281,15 +300,17 @@ export default function FabricsPage() {
             <DialogDescription>
               Kain{" "}
               <span className="font-semibold text-foreground">
-                "{deleteTarget?.name}"
+                &quot;{deleteTarget?.name}&quot;
               </span>{" "}
               akan dihapus dari master data secara permanen.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-sm text-red-700">
-            Tindakan ini tidak bisa dibatalkan. Kain yang sudah dipakai di
-            pembelian atau BOM tidak bisa dihapus.
-          </div>
+          <DialogBody>
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-sm text-red-700">
+              Tindakan ini tidak bisa dibatalkan. Kain yang sudah dipakai di
+              pembelian atau BOM tidak bisa dihapus.
+            </div>
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"

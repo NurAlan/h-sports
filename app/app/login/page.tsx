@@ -77,11 +77,11 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-5">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-stone-100 px-5">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg mb-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary shadow-lg mb-4">
             <Shirt className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-foreground">H-Sport</h1>
@@ -91,7 +91,7 @@ function LoginForm() {
         </div>
 
         {/* Card Login */}
-        <div className="rounded-2xl border border-gray-300 bg-white p-6 card-shadow-lg">
+        <div className="rounded-xl border border-stone-300 bg-white p-6 card-shadow-lg">
           <form onSubmit={handleSignIn} className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="username">Email</Label>
@@ -141,7 +141,7 @@ function LoginForm() {
           {/* Divider */}
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-stone-200" />
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="bg-white px-2 text-muted-foreground">atau</span>
@@ -153,7 +153,7 @@ function LoginForm() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-base font-medium text-foreground shadow-sm hover:bg-gray-50 disabled:opacity-60 transition-colors"
+            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-base font-medium text-foreground shadow-sm hover:bg-stone-50 disabled:opacity-60 transition-colors"
             title="Hanya berfungsi dari localhost (buka di Mac, bukan dari HP)"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">

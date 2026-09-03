@@ -36,18 +36,18 @@ export function StatusFilter({ options, value, onChange, showCounts, className }
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 min-h-[40px] text-sm font-medium border transition-all duration-150 active:scale-95",
+              "flex items-center gap-1.5 shrink-0 rounded-lg px-4 py-2 min-h-[40px] text-sm font-medium border transition-all duration-150 active:scale-95",
               active
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-white text-muted-foreground border-gray-300 hover:bg-gray-50 hover:text-foreground"
+                : "bg-white text-muted-foreground border-stone-300 hover:bg-stone-50 hover:text-foreground"
             )}
           >
             {opt.label}
             {showCounts && typeof opt.count === "number" && (
               <span
                 className={cn(
-                  "text-[10px] font-bold rounded-full px-1.5 py-0.5 ml-0.5",
-                  active ? "bg-white/20 text-white" : "bg-gray-100 text-muted-foreground"
+                  "text-[10px] font-bold rounded px-1.5 py-0.5 ml-0.5",
+                  active ? "bg-white/20 text-white" : "bg-stone-100 text-muted-foreground"
                 )}
               >
                 {opt.count}

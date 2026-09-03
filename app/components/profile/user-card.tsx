@@ -52,19 +52,19 @@ export function UserCard() {
   }, []);
 
   return (
-    <Card className="mb-5 card-shadow-lg bg-gradient-to-br from-blue-600 to-blue-800 border-blue-400/30 text-white">
+    <Card className="mb-5 card-shadow-lg bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 border-stone-700/50 text-white">
       <CardContent className="pt-5 pb-5 flex items-center gap-4">
         {user?.picture ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={user.picture}
             alt={user.name || "Foto profil"}
-            className="h-14 w-14 rounded-full border-2 border-white/80 object-cover shadow-sm"
+            className="h-14 w-14 rounded-full border-2 border-amber-400/60 object-cover shadow-sm"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/20 border-2 border-white/60">
-            <User className="h-7 w-7 text-white" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-amber-500/20 border-2 border-amber-400/40">
+            <User className="h-7 w-7 text-amber-300" />
           </div>
         )}
         <div className="min-w-0 flex-1">
@@ -80,12 +80,12 @@ export function UserCard() {
                   {user?.name || "Owner"}
                 </p>
                 {user?.businessName && (
-                  <span className="text-[11px] font-semibold bg-white/20 px-2 py-0.5 rounded-full border border-white/30 truncate">
+                  <span className="text-[11px] font-semibold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-400/30 truncate text-amber-200">
                     {user.businessName}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-blue-100/90 truncate mt-0.5">
+              <p className="text-sm text-stone-300 truncate mt-0.5">
                 {user?.email || "owner@hsport.id"}
               </p>
             </>

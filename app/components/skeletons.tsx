@@ -16,7 +16,7 @@ export function OrderCardSkeleton() {
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-3 w-24" />
         </div>
-        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-16 rounded" />
       </div>
       <Skeleton className="h-2 w-full mb-2" />
       <div className="space-y-1.5 mb-3">
@@ -37,7 +37,7 @@ export function FabricCardSkeleton() {
     <div className="rounded-xl border border-border bg-card p-4 h-full card-shadow">
       <div className="flex items-start justify-between mb-2">
         <Skeleton className="h-3.5 w-20" />
-        <Skeleton className="h-3.5 w-3.5 rounded-full" />
+        <Skeleton className="h-3.5 w-3.5 rounded" />
       </div>
       <Skeleton className="h-7 w-16 mb-1" />
       <Skeleton className="h-3 w-12 mb-3" />
@@ -54,7 +54,7 @@ export function StatCardSkeleton() {
   return (
     <div className="rounded-xl border border-border bg-card p-4 card-shadow">
       <div className="flex items-center gap-1.5 mb-2">
-        <Skeleton className="h-4 w-4 rounded-full" />
+        <Skeleton className="h-4 w-4 rounded" />
         <Skeleton className="h-3 w-16" />
       </div>
       <Skeleton className="h-6 w-20 mb-1" />
@@ -93,7 +93,7 @@ export function ListItemSkeleton() {
 export function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-28 w-full rounded-2xl" />
+      <Skeleton className="h-28 w-full rounded-xl" />
       <ChartCardSkeleton />
       <div className="grid grid-cols-2 gap-3">
         <StatCardSkeleton />
@@ -129,9 +129,9 @@ export function ReportsSkeleton() {
 export function DetailSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-24 w-full rounded-2xl" />
-      <Skeleton className="h-32 w-full rounded-2xl" />
-      <Skeleton className="h-40 w-full rounded-2xl" />
+      <Skeleton className="h-24 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
     </div>
   );
 }

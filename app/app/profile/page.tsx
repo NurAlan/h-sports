@@ -12,6 +12,7 @@ import {
   User,
   SwatchBook,
   BarChart3,
+  TrendingUp,
   LogOut,
   ChevronRight,
   Sparkles,
@@ -27,28 +28,28 @@ const menuItems = [
     label: "Pengaturan Profil",
     subtitle: "Nama, kontak, informasi usaha",
     href: "/profile/settings",
-    color: "bg-blue-100 text-blue-600",
+    color: "bg-blue-100 text-blue-700",
   },
   {
     icon: SwatchBook,
     label: "Master Fabric",
     subtitle: "Kelola jenis kain (tambah, ubah, hapus)",
     href: "/profile/fabrics",
-    color: "bg-violet-100 text-violet-600",
+    color: "bg-indigo-100 text-indigo-700",
   },
   {
     icon: BarChart3,
     label: "Laporan Keuangan",
     subtitle: "Profit, omzet, HPP, margin",
     href: "/reports",
-    color: "bg-green-100 text-green-600",
+    color: "bg-emerald-100 text-emerald-700",
   },
   {
-    icon: BarChart3,
+    icon: TrendingUp,
     label: "Laporan Produksi",
     subtitle: "Lead time, durasi stage & status",
     href: "/reports/produksi",
-    color: "bg-amber-100 text-amber-600",
+    color: "bg-purple-100 text-purple-700",
   },
 ];
 
@@ -66,7 +67,7 @@ export default function ProfilePage() {
 
   const handleResetTour = () => {
     resetAllTutorialState();
-    toast.success("Status panduan berhasil di-reset! Panduan onboarding akan otomatis muncul kembali di Dashboard.");
+    toast.success("Panduan di-reset. Buka Dashboard untuk memulai.");
   };
 
   return (
@@ -83,22 +84,22 @@ export default function ProfilePage() {
         {/* Panduan Alur Bisnis Button Item */}
         <Card
           onClick={() => setTourOpen(true)}
-          className="border-blue-200 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 card-shadow-lg cursor-pointer hover:shadow-xl hover:border-blue-300 active:scale-[0.99] transition-all"
+          className="border-0 bg-gradient-to-br from-blue-600 via-blue-600 to-blue-700 card-shadow-lg cursor-pointer hover:shadow-xl active:scale-[0.99] transition-all"
         >
           <CardContent className="py-4 px-5">
             <div className="flex items-center gap-4">
-              <div className="bg-primary text-white p-2.5 rounded-xl shadow-xs">
+              <div className="bg-white/20 backdrop-blur-sm text-white p-2.5 rounded-xl shadow-xs">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-primary">
+                <p className="text-base font-bold text-white">
                   Panduan Alur Bisnis H-Sport
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-blue-100 mt-0.5">
                   5 langkah operasional dari stok hingga laporan
                 </p>
               </div>
-              <ChevronRight className="h-4 w-4 text-primary shrink-0" />
+              <ChevronRight className="h-4 w-4 text-white shrink-0" />
             </div>
           </CardContent>
         </Card>
@@ -107,7 +108,7 @@ export default function ProfilePage() {
           const Icon = item.icon;
           return (
             <Link key={item.href} href={item.href}>
-              <Card className="border-gray-300 bg-white card-shadow-lg cursor-pointer hover:shadow-xl transition-all">
+              <Card className="border-stone-200 bg-white card-shadow-lg cursor-pointer hover:shadow-xl transition-all">
                 <CardContent className="py-4 px-5">
                   <div className="flex items-center gap-4">
                     <div className={`${item.color} p-2.5 rounded-xl`}>
@@ -132,11 +133,11 @@ export default function ProfilePage() {
         {/* Reset Panduan Button Item */}
         <Card
           onClick={handleResetTour}
-          className="border-gray-300 bg-white card-shadow-lg cursor-pointer hover:shadow-xl hover:border-gray-400 active:scale-[0.99] transition-all"
+          className="border-stone-200 bg-white card-shadow-lg cursor-pointer hover:shadow-xl hover:border-stone-300 active:scale-[0.99] transition-all"
         >
           <CardContent className="py-3.5 px-5">
             <div className="flex items-center gap-4">
-              <div className="bg-gray-100 text-gray-700 p-2.5 rounded-xl">
+              <div className="bg-stone-100 text-stone-600 p-2.5 rounded-lg">
                 <RotateCcw className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">

@@ -29,7 +29,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8f7f4" },
+    { media: "(prefers-color-scheme: light)", color: "#F5F4F2" },
+    { media: "(prefers-color-scheme: dark)", color: "#1C1917" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -54,7 +55,7 @@ export default function RootLayout({
           <main
             id="main-content"
             tabIndex={-1}
-            className="pb-28 min-h-dvh bg-muted/40 outline-none"
+            className="pb-28 min-h-dvh bg-background outline-none"
           >
             {children}
           </main>
